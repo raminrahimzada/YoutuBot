@@ -253,8 +253,19 @@ namespace YoutuBot
                             video.Title = channelVideoPlayerRenderer["title"]["runs"].Select(c => c["text"])
                                 .JoinWith("\n");
 
-                            video.Description = channelVideoPlayerRenderer["description"]?["runs"].Select(c => c["text"])
-                                .JoinWith("\n");
+                            if (channelVideoPlayerRenderer["description"]!=null)
+                            {
+                                if (channelVideoPlayerRenderer["description"]["simpleText"] != null)
+                                {
+                                    video.Description =
+                                        channelVideoPlayerRenderer["description"]["simpleText"] + String.Empty;
+                                }
+                                else
+                                {
+                                    video.Description = channelVideoPlayerRenderer["description"]["runs"].Select(c => c["text"])
+                                        .JoinWith("\n");
+                                }
+                            }
 
                             video.ViewsCount =
                                 channelVideoPlayerRenderer["viewCountText"]?["simpleText"] + string.Empty;
