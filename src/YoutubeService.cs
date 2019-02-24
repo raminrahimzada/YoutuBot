@@ -138,8 +138,8 @@ namespace YoutuBot
                             .Select(c => c["url"] + string.Empty).ToArray();
                         nextVideo.Title = compactVideoRenderer["title"]["simpleText"] + string.Empty;
                         nextVideo.RichThumbnail =
-                            compactVideoRenderer["richThumbnail"]["movingThumbnailRenderer"]["movingThumbnailDetails"]
-                                ["thumbnails"].Select(c => c["url"] + string.Empty).FirstOrDefault();
+                            compactVideoRenderer["richThumbnail"]?["movingThumbnailRenderer"]?["movingThumbnailDetails"]?
+                                ["thumbnails"]?.Select(c => c["url"] + string.Empty).FirstOrDefault();
                         nextVideo.ViewsCount = compactVideoRenderer["viewCountText"]["simpleText"] + string.Empty;
                         nextVideo.Length = compactVideoRenderer["lengthText"]["simpleText"] + string.Empty;
                         nextVideo.ChannelThumbnail = compactVideoRenderer["channelThumbnail"]["thumbnails"]
