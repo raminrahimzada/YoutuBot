@@ -1,7 +1,7 @@
 # YoutuBot
 Non-Legal Youtube api , No quotas , no request limits and no Api-Keys needed
 
-# Get Channel Info::
+# Get Channel Info :
 1. Name
 2. Description
 3. Keywords
@@ -11,7 +11,7 @@ Non-Legal Youtube api , No quotas , no request limits and no Api-Keys needed
 7. Related User Id
 8. Logo Url
 
-# Get Playlist Info:
+# Get Playlist Info :
 1. Title
 2. View Count 
 3. Author Name
@@ -20,7 +20,7 @@ Non-Legal Youtube api , No quotas , no request limits and no Api-Keys needed
 6. Description
 7. Thumbnails
 
-# Get Video Info 
+# Get Video Info :
 1. Title
 2. Description
 3. Publish Date
@@ -42,7 +42,7 @@ Non-Legal Youtube api , No quotas , no request limits and no Api-Keys needed
 19. License
 
 
-# Media Stream Info:
+# Media Stream Info :
 1. Download Url
 2. Width
 3. Height
