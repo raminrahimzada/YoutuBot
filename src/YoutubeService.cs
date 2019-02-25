@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json.Linq;
@@ -14,41 +13,31 @@ namespace YoutuBot
             var url = $"https://www.youtube.com/user/{userId}/playlists";
 
             var html = url.DownloadHTML();
-            
-            StringReader reader = new StringReader(html);
-            string line;
-            while (null != (line = reader.ReadLine()))
+            var ytInitialData = html.GetYtInitialData();
+            var obj = JObject.Parse(ytInitialData);
+
+            var content = obj["contents"]["twoColumnBrowseResultsRenderer"]["tabs"][2]["tabRenderer"]["content"];
+            var itemSectionRenderer =
+                content["sectionListRenderer"]; //["itemSectionRenderer"];
+            var playLists = itemSectionRenderer["contents"][0]["itemSectionRenderer"]
+                ["contents"][0]
+                ["gridRenderer"]?["items"].Select(c => c["gridPlaylistRenderer"]);
+            if (playLists == null) yield break;
+
+            foreach (var p in playLists)
             {
-                var pattern = "window[\"ytInitialData\"] =";
-                if (!line.Contains(pattern)) continue;
-                line = line.RemoveThis(pattern);
-                if (line.EndsWith(";"))
-                {
-                    line = line.ReplaceLast(";", "");
-                }
-
-                var obj = JObject.Parse(line);
-                var content = obj["contents"]["twoColumnBrowseResultsRenderer"]["tabs"][2]["tabRenderer"]["content"];
-                var itemSectionRenderer =
-                    content["sectionListRenderer"];//["itemSectionRenderer"];
-                var playLists = itemSectionRenderer["contents"][0]["itemSectionRenderer"]
-                    ["contents"][0]
-                    ["gridRenderer"]?["items"].Select(c => c["gridPlaylistRenderer"]);
-                if(playLists!=null)
-                    foreach (var p in playLists)
-                    {
-                        YoutubePlayList playList = new YoutubePlayList();
-
-                        playList.Id = p["playlistId"] + String.Empty;
-                        playList.Thumbnail = p["thumbnail"]["thumbnails"][0]["url"] + string.Empty;
-                        var title = p["title"]["runs"].Select(c => c["text"] + string.Empty).JoinWith("\n");
-                        playList.VideoCount = p["videoCountText"]["simpleText"] + String.Empty;
-                        playList.PublishedTime = p["publishedTimeText"]["simpleText"] + String.Empty;
-                        if(string.IsNullOrEmpty(playList.VideoCount)) playList.VideoCount = p["videoCountShortText"]["simpleText"] + String.Empty;
-                        playList.SidebarThumbnails = p["sidebarThumbnails"]?.Select(c => c["thumbnails"][0]["url"] + string.Empty)
-                            .ToArray();
-                        yield return playList;
-                    }
+                YoutubePlayList playList = new YoutubePlayList();
+                playList.Id = p["playlistId"] + string.Empty;
+                playList.Thumbnail = p["thumbnail"]["thumbnails"][0]["url"] + string.Empty;
+                playList.Title = p["title"]["runs"].Select(c => c["text"] + string.Empty).JoinWith("\n");
+                playList.VideoCount = p["videoCountText"]["simpleText"] + String.Empty;
+                playList.PublishedTime = p["publishedTimeText"]["simpleText"] + String.Empty;
+                if (string.IsNullOrEmpty(playList.VideoCount))
+                    playList.VideoCount = p["videoCountShortText"]["simpleText"] + String.Empty;
+                playList.SidebarThumbnails = p["sidebarThumbnails"]
+                    ?.Select(c => c["thumbnails"][0]["url"] + string.Empty)
+                    .ToArray();
+                yield return playList;
             }
         }
 
@@ -186,104 +175,91 @@ namespace YoutuBot
             channel.Tags = html.GetStringBetweenAll("<meta property=\"og:video:tag\" content=\"", "\">").ToArray();
             channel.UserId = html.GetStringBetween("/user/", "\"");
 
-            StringReader reader = new StringReader(html);
-            string line;
-            while (null != (line = reader.ReadLine()))
+            var ytInitialData = html.GetYtInitialData();
+            var obj = JObject.Parse(ytInitialData);
+            var secondaryContents =
+                obj["contents"]["twoColumnBrowseResultsRenderer"]["secondaryContents"][
+                        "browseSecondaryContentsRenderer"]["contents"]
+                    .Select(c => c["verticalChannelSectionRenderer"]["items"]).ToArray();
+            var friendChannels = secondaryContents[0].Select(c => c["miniChannelRenderer"]);
+            channel.FriendChannels = new List<YoutubeChannelInfo>();
+            foreach (var friendChannel in friendChannels)
             {
-                var pattern = "window[\"ytInitialData\"] =";
-                if (!line.Contains(pattern)) continue;
-                line = line.RemoveThis(pattern);
-                if (line.EndsWith(";"))
-                {
-                    line = line.ReplaceLast(";", "");
-                }
-                var obj = JObject.Parse(line);
-                var secondaryContents =
-                    obj["contents"]["twoColumnBrowseResultsRenderer"]["secondaryContents"][
-                            "browseSecondaryContentsRenderer"]["contents"]
-                        .Select(c => c["verticalChannelSectionRenderer"]["items"]).ToArray();
-                var friendChannels = secondaryContents[0].Select(c => c["miniChannelRenderer"]);
-                channel.FriendChannels = new List<YoutubeChannelInfo>();
-                foreach (var friendChannel in friendChannels)
-                {
-                    YoutubeChannelInfo innerChannel = new YoutubeChannelInfo();
-                    innerChannel.Id = friendChannel["channelId"] + string.Empty;
-                    innerChannel.Name = friendChannel["title"]["runs"][0]["text"] + String.Empty;
-                    innerChannel.SubscriptionCount = friendChannel["subscriberCountText"]["simpleText"] + string.Empty;
-                    innerChannel.Thumbnails = friendChannel["thumbnail"]["thumbnails"]
-                        .Select(c => c["url"] + string.Empty).ToArray();
-                    channel.FriendChannels.Add(innerChannel);
-                }
-                if (secondaryContents.Length == 2)
-                {
-                    var relatedChannels = secondaryContents[1].Select(c => c["miniChannelRenderer"]);
-                    channel.RelatedChannels = new List<YoutubeChannelInfo>();
-                    foreach (var relatedChannel in relatedChannels)
-                    {
-                        YoutubeChannelInfo innerChannel=new YoutubeChannelInfo();
-                        innerChannel.Id = relatedChannel["channelId"]+string.Empty;
-                        innerChannel.Name = relatedChannel["title"]["runs"][0]["text"] + String.Empty;
-                        innerChannel.SubscriptionCount = relatedChannel["subscriberCountText"]["simpleText"] + string.Empty;
-                        innerChannel.Thumbnails = relatedChannel["thumbnail"]["thumbnails"]
-                            .Select(c => c["url"] + string.Empty).ToArray();
-                        channel.RelatedChannels.Add(innerChannel);
-                    }
-                }
-
-                var tabs = obj["contents"]["twoColumnBrowseResultsRenderer"]["tabs"].Select(c=>c["tabRenderer"])
-                    .Where(t=>t!=null);
-                foreach (var tab in tabs)
-                {
-                    var _title = tab["title"]+string.Empty;
-                    if (_title == "Home")
-                    {
-                        channel.Uploads=new List<YoutubeVideoInfo>();
-                        var contents = tab["content"]["sectionListRenderer"]["contents"];
-                        var items = contents.Select(c =>
-                                    c["itemSectionRenderer"]["contents"][0])
-                                .Select(c=>c["channelVideoPlayerRenderer"] ?? c["shelfRenderer"])
-                            ;
-
-                        foreach (var channelVideoPlayerRenderer in items)
-                        {
-                            YoutubeVideoInfo video=new YoutubeVideoInfo();
-                            
-                            video.Id= channelVideoPlayerRenderer["videoId"] + string.Empty;
-
-                            video.Title = channelVideoPlayerRenderer["title"]["runs"].Select(c => c["text"])
-                                .JoinWith("\n");
-
-                            if (channelVideoPlayerRenderer["description"]!=null)
-                            {
-                                if (channelVideoPlayerRenderer["description"]["simpleText"] != null)
-                                {
-                                    video.Description =
-                                        channelVideoPlayerRenderer["description"]["simpleText"] + String.Empty;
-                                }
-                                else
-                                {
-                                    video.Description = channelVideoPlayerRenderer["description"]["runs"].Select(c => c["text"])
-                                        .JoinWith("\n");
-                                }
-                            }
-
-                            video.ViewsCount =
-                                channelVideoPlayerRenderer["viewCountText"]?["simpleText"] + string.Empty;
-
-                            video.PublishedTime =
-                                channelVideoPlayerRenderer["publishedTimeText"]?["simpleText"] + string.Empty;
-                            channel.Uploads.Add(video);
-                        }
-                    }
-                    else
-                    {
-                        int errr = 1;
-                    }
-                }
-                break;
-
+                YoutubeChannelInfo innerChannel = new YoutubeChannelInfo();
+                innerChannel.Id = friendChannel["channelId"] + string.Empty;
+                innerChannel.Name = friendChannel["title"]["runs"][0]["text"] + String.Empty;
+                innerChannel.SubscriptionCount = friendChannel["subscriberCountText"]["simpleText"] + string.Empty;
+                innerChannel.Thumbnails = friendChannel["thumbnail"]["thumbnails"]
+                    .Select(c => c["url"] + string.Empty).ToArray();
+                channel.FriendChannels.Add(innerChannel);
             }
 
+            if (secondaryContents.Length == 2)
+            {
+                var relatedChannels = secondaryContents[1].Select(c => c["miniChannelRenderer"]);
+                channel.RelatedChannels = new List<YoutubeChannelInfo>();
+                foreach (var relatedChannel in relatedChannels)
+                {
+                    YoutubeChannelInfo innerChannel = new YoutubeChannelInfo();
+                    innerChannel.Id = relatedChannel["channelId"] + string.Empty;
+                    innerChannel.Name = relatedChannel["title"]["runs"][0]["text"] + String.Empty;
+                    innerChannel.SubscriptionCount = relatedChannel["subscriberCountText"]["simpleText"] + string.Empty;
+                    innerChannel.Thumbnails = relatedChannel["thumbnail"]["thumbnails"]
+                        .Select(c => c["url"] + string.Empty).ToArray();
+                    channel.RelatedChannels.Add(innerChannel);
+                }
+            }
+
+            var tabs = obj["contents"]["twoColumnBrowseResultsRenderer"]["tabs"].Select(c => c["tabRenderer"])
+                .Where(t => t != null);
+            foreach (var tab in tabs)
+            {
+                var _title = tab["title"] + string.Empty;
+                if (_title == "Home")
+                {
+                    channel.Uploads = new List<YoutubeVideoInfo>();
+                    var contents = tab["content"]["sectionListRenderer"]["contents"];
+                    var items = contents.Select(c =>
+                                c["itemSectionRenderer"]["contents"][0])
+                            .Select(c => c["channelVideoPlayerRenderer"] ?? c["shelfRenderer"])
+                        ;
+
+                    foreach (var channelVideoPlayerRenderer in items)
+                    {
+                        YoutubeVideoInfo video = new YoutubeVideoInfo();
+
+                        video.Id = channelVideoPlayerRenderer["videoId"] + string.Empty;
+
+                        video.Title = channelVideoPlayerRenderer["title"]["runs"].Select(c => c["text"])
+                            .JoinWith("\n");
+
+                        if (channelVideoPlayerRenderer["description"] != null)
+                        {
+                            if (channelVideoPlayerRenderer["description"]["simpleText"] != null)
+                            {
+                                video.Description =
+                                    channelVideoPlayerRenderer["description"]["simpleText"] + String.Empty;
+                            }
+                            else
+                            {
+                                video.Description = channelVideoPlayerRenderer["description"]["runs"]
+                                    .Select(c => c["text"])
+                                    .JoinWith("\n");
+                            }
+                        }
+
+                        video.ViewsCount =
+                            channelVideoPlayerRenderer["viewCountText"]?["simpleText"] + string.Empty;
+
+                        video.PublishedTime =
+                            channelVideoPlayerRenderer["publishedTimeText"]?["simpleText"] + string.Empty;
+                        channel.Uploads.Add(video);
+                    }
+                }
+                else
+                {
+                }
+            }
             return channel;
         }
         public YoutubePlayList GetPlayList(string playlistId,int maxItemsCount=0)
