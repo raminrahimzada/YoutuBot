@@ -1,6 +1,16 @@
 # YoutuBot
 Non-Legal Youtube api , No quotas , no request limits and no Api-Keys needed
 
+# Main Features:
+
+1. Get Video Info + Comments+next videos
+2. Get Channel Info + uploads and playlists
+3. Get Playlist Videos 
+4. Get Country Trends
+
+
+
+
 # Get Channel Info :
 1. Name
 2. Description
