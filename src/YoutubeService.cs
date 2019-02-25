@@ -419,5 +419,35 @@ namespace YoutuBot
                 yield return video;
             }
         }
+
+        public IEnumerable<KeyValuePair<string, YoutubeChannelInfo[]>> BrowseChannels()
+        {
+            var url = "https://www.youtube.com/feed/guide_builder";
+            var jsonString = url.DownloadHTML().GetYtInitialData();
+            var obj = JObject.Parse(jsonString);
+
+            var itemsAll = obj["contents"]["twoColumnBrowseResultsRenderer"]["tabs"][0]["tabRenderer"]["content"][
+                    "sectionListRenderer"]
+                ["contents"].Select(c =>
+                    c["itemSectionRenderer"]["contents"][0]["shelfRenderer"]);
+
+            foreach (var item in itemsAll)
+            {
+                var title = item["title"]["simpleText"] + String.Empty;
+                List<YoutubeChannelInfo> results = new List<YoutubeChannelInfo>();
+                var channels = item["content"]["horizontalListRenderer"]["items"].Select(c => c["gridChannelRenderer"]);
+                foreach (var c in channels)
+                {
+                    YoutubeChannelInfo channel=new YoutubeChannelInfo();
+                    channel.Id = c["channelId"] + string.Empty;
+                    channel.Thumbnails = c["thumbnail"]["thumbnails"].Select(t=>t["url"]+string.Empty).ToArray();
+                    channel.SubscriptionCount = c["subscriberCountText"]?["simpleText"] + string.Empty;
+                    channel.Name = c["title"]["simpleText"] + String.Empty;
+                    results.Add(channel);
+                }
+
+                yield return new KeyValuePair<string, YoutubeChannelInfo[]>(title, results.ToArray());
+            }
+        }
     }
 }

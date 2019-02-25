@@ -8,7 +8,11 @@ namespace YoutuBot
         {
             //our awesome service
             IYoutubeService service = new YoutubeService();
-           
+            
+            //browse channels for popular categories
+            //returns pairs as following: category name and list of channels
+            var channels = service.BrowseChannels().ToArray();
+
             //awesome channelId 
             var channelId = "UCjsdYhMIQ0-fJPqEjiHYlzA";
 
@@ -56,6 +60,8 @@ namespace YoutuBot
             {
                 Console.WriteLine(i++ + ") " + videoInfo.Title);
             }
+            
+            
         }
     }
 }

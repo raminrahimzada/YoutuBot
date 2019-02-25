@@ -18,5 +18,6 @@ namespace YoutuBot
 
         IEnumerable<YoutubeVideoInfo> SearchForVideo(string query, int page);
         IEnumerable<YoutubeVideoInfo> GetTrending(string countryCode);
+        IEnumerable<KeyValuePair<string, YoutubeChannelInfo[]>> BrowseChannels();
     }
 }
