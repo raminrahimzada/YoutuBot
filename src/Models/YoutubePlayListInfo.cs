@@ -1,9 +1,8 @@
 using System.Collections.Generic;
-using YoutuBot.Models;
 
-namespace YoutuBot
+namespace YoutuBot.Models
 {
-    public class YoutubePlayList
+    public class YoutubePlayListInfo
     {
         public string Title { get; set; }
         public string Description { get; set; }
@@ -15,5 +14,12 @@ namespace YoutuBot
         public string VideoCount { get; set; }
         public string PublishedTime { get; set; }
         public string[] SidebarThumbnails { get; set; }
+
+        public override string ToString()
+        {
+            if (!string.IsNullOrEmpty(Title)) return Title;
+            if (!string.IsNullOrEmpty(Description)) return Description;
+            return Id;
+        }
     }
 }

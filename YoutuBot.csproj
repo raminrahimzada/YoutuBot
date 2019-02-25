@@ -51,11 +51,11 @@
     <Compile Include="src\IYoutubeService.cs" />
     <Compile Include="src\Models\YoutubeChannelInfo.cs" />
     <Compile Include="src\YoutubeHelpers.cs" />
-    <Compile Include="src\YoutubePlayList.cs" />
+    <Compile Include="src\Models\YoutubePlayListInfo.cs" />
     <Compile Include="src\YoutubeService.cs" />
     <Compile Include="src\Models\YoutubeVideoInfo.cs" />
-    <Compile Include="src\Models\YoutubeVideoStream.cs" />
-    <Compile Include="src\Models\YoutubeVideoComment.cs" />
+    <Compile Include="src\Models\YoutubeVideoStreamInfo.cs" />
+    <Compile Include="src\Models\YoutubeVideoCommentInfo.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

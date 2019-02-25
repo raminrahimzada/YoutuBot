@@ -26,7 +26,7 @@ namespace YoutuBot.Models
         public string Duration { get; set; }
         public string Author { get; set; }
         public string PublishedTime { get; set; }
-        public List<YoutubeVideoStream> VideoStreams { get; set; }
+        public List<YoutubeVideoStreamInfo> VideoStreams { get; set; }
         public string Watermark { get; set; }
         public string IsLiveContent { get; set; }
         public string ChannelId { get; set; }
@@ -34,5 +34,13 @@ namespace YoutuBot.Models
         public string[] Thumbnails { get; set; }
         public string RichThumbnail { get; set; }
         public string[] ChannelThumbnail { get; set; }
+
+
+        public override string ToString()
+        {
+            if (!string.IsNullOrEmpty(Title)) return Title;
+            if (!string.IsNullOrEmpty(Description)) return Description;
+            return Id;
+        }
     }
 }

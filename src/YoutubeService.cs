@@ -9,7 +9,7 @@ namespace YoutuBot
 {
     public class YoutubeService : IYoutubeService
     {
-        public IEnumerable<YoutubePlayList> GetUserPlayLists(string userId)
+        public IEnumerable<YoutubePlayListInfo> GetUserPlayLists(string userId)
         {
             var url = $"https://www.youtube.com/user/{userId}/playlists";
 
@@ -27,18 +27,18 @@ namespace YoutuBot
 
             foreach (var p in playLists)
             {
-                YoutubePlayList playList = new YoutubePlayList();
-                playList.Id = p["playlistId"] + string.Empty;
-                playList.Thumbnail = p["thumbnail"]["thumbnails"][0]["url"] + string.Empty;
-                playList.Title = p["title"]["runs"].Select(c => c["text"] + string.Empty).JoinWith("\n");
-                playList.VideoCount = p["videoCountText"]["simpleText"] + string.Empty;
-                playList.PublishedTime = p["publishedTimeText"]["simpleText"] + string.Empty;
-                if (string.IsNullOrEmpty(playList.VideoCount))
-                    playList.VideoCount = p["videoCountShortText"]["simpleText"] + string.Empty;
-                playList.SidebarThumbnails = p["sidebarThumbnails"]
+                YoutubePlayListInfo playListInfo = new YoutubePlayListInfo();
+                playListInfo.Id = p["playlistId"] + string.Empty;
+                playListInfo.Thumbnail = p["thumbnail"]["thumbnails"][0]["url"] + string.Empty;
+                playListInfo.Title = p["title"]["runs"].Select(c => c["text"] + string.Empty).JoinWith("\n");
+                playListInfo.VideoCount = p["videoCountText"]["simpleText"] + string.Empty;
+                playListInfo.PublishedTime = p["publishedTimeText"]["simpleText"] + string.Empty;
+                if (string.IsNullOrEmpty(playListInfo.VideoCount))
+                    playListInfo.VideoCount = p["videoCountShortText"]["simpleText"] + string.Empty;
+                playListInfo.SidebarThumbnails = p["sidebarThumbnails"]
                     ?.Select(c => c["thumbnails"][0]["url"] + string.Empty)
                     .ToArray();
-                yield return playList;
+                yield return playListInfo;
             }
         }
 
@@ -123,7 +123,7 @@ namespace YoutuBot
                     if (compactVideoRenderer != null)
                     {
                         var nextVideo=new YoutubeVideoInfo();
-                        nextVideo.Id = videoId;
+                        nextVideo.Id = compactVideoRenderer["videoId"] + string.Empty;
                         nextVideo.Thumbnails = compactVideoRenderer["thumbnail"]["thumbnails"]
                             .Select(c => c["url"] + string.Empty).ToArray();
                         nextVideo.Title = compactVideoRenderer["title"]["simpleText"] + string.Empty;
@@ -140,10 +140,10 @@ namespace YoutuBot
             }
 
             var streamingData = playerResponse["streamingData"]["formats"];
-            video.VideoStreams = new List<YoutubeVideoStream>();
+            video.VideoStreams = new List<YoutubeVideoStreamInfo>();
             foreach (var vs in streamingData)
             {
-                var stream=new YoutubeVideoStream();
+                var stream=new YoutubeVideoStreamInfo();
                 stream.ITag = vs["itag"] + string.Empty;
                 stream.Url = vs["url"] + string.Empty;
                 stream.Width = vs["width"] + string.Empty;
@@ -257,26 +257,23 @@ namespace YoutuBot
                         channel.Uploads.Add(video);
                     }
                 }
-                else
-                {
-                }
             }
             return channel;
         }
-        public YoutubePlayList GetPlayList(string playlistId,int maxItemsCount=0)
+        public YoutubePlayListInfo GetPlayList(string playlistId,int maxItemsCount=0)
         {
             var url =
                 $"https://www.youtube.com/list_ajax?style=json&action_get_list=1&list={playlistId}&index={maxItemsCount}&hl=en";
             var jsonString = url.DownloadHTML();
             var obj = JObject.Parse(jsonString);
-            YoutubePlayList playList = new YoutubePlayList();
-            playList.Title = obj["title"] + string.Empty;
-            playList.Description = obj["description"] + string.Empty;
-            playList.AuthorName = obj["author"] + string.Empty;
-            playList.Views = obj["views"] + string.Empty;
+            YoutubePlayListInfo playListInfo = new YoutubePlayListInfo();
+            playListInfo.Title = obj["title"] + string.Empty;
+            playListInfo.Description = obj["description"] + string.Empty;
+            playListInfo.AuthorName = obj["author"] + string.Empty;
+            playListInfo.Views = obj["views"] + string.Empty;
             JArray videos = (JArray)obj["video"];
 
-            playList.Videos = new List<YoutubeVideoInfo>();
+            playListInfo.Videos = new List<YoutubeVideoInfo>();
             foreach (var v in videos)
             {
                 YoutubeVideoInfo video = new YoutubeVideoInfo();
@@ -301,19 +298,19 @@ namespace YoutuBot
                 video.Duration = v["duration"] + string.Empty;
                 video.Author = v["author"] + string.Empty;
                 video.IsHD = v["is_hd"] + string.Empty;
-                playList.Videos.Add(video);
+                playListInfo.Videos.Add(video);
             }
 
-            return playList;
+            return playListInfo;
 
         }
 
 
 
-        public  IEnumerable<YoutubeVideoComment[]> GetRootComments(string videoId)
+        public  IEnumerable<YoutubeVideoCommentInfo[]> GetRootComments(string videoId)
         {
             string session_token, itct, visitorInfo1Live, xsrf_token, ysc;
-            YoutubeHelpers.ParseYoutubeVideo(videoId, out visitorInfo1Live, out ysc, out xsrf_token, out session_token, out itct);
+            YoutubeHelpers.ParseYoutubeVideoTokens(videoId, out visitorInfo1Live, out ysc, out xsrf_token, out session_token, out itct);
             //equal in beginning
             string continuationDefault = xsrf_token;
             //here contains lots of other data and some tokens for getting other comments
@@ -349,6 +346,77 @@ namespace YoutuBot
                 {
                     break;
                 }
+            }
+        }
+
+
+        public IEnumerable<YoutubeVideoInfo> SearchForVideo(string query,int page)
+        {
+            var url = $"https://www.youtube.com/search_ajax?style=json&search_query={query}&page={page}&hl=en";
+            var jsonString = url.DownloadHTML();
+            var obj = JObject.Parse(jsonString);
+            var videos = obj["video"];
+            foreach (var v in videos)
+            {
+                YoutubeVideoInfo video = new YoutubeVideoInfo();
+                video.CommentsCount = v["comments"] + string.Empty;
+                video.ViewsCount = v["views"] + string.Empty;
+                video.CCLicense = v["cc_license"] + string.Empty;
+                video.Rating = v["rating"] + string.Empty;
+                video.Keywords = v["keywords"] + string.Empty;
+                video.LikesCount = v["likes"] + string.Empty;
+                video.CategoryId = v["category_id"] + string.Empty;
+                video.DislikesCount = v["dislikes"] + string.Empty;
+                video.Title = v["title"] + string.Empty;
+                video.AddedOn = v["added"] + string.Empty;
+                video.Id = v["encrypted_id"] + string.Empty;
+                video.TimeCreated = v["time_created"] + string.Empty;
+                video.Description = v["description"] + string.Empty;
+                video.Length = v["length_seconds"] + string.Empty;
+                video.UserId = v["user_id"] + string.Empty;
+                video.Thumbnail = v["thumbnail"] + string.Empty;
+                video.Privacy = v["privacy"] + string.Empty;
+                video.IsCC = v["is_cc"] + string.Empty;
+                video.Duration = v["duration"] + string.Empty;
+                video.Author = v["author"] + string.Empty;
+                video.IsHD = v["is_hd"] + string.Empty;
+                yield return video;
+            }
+        }
+
+        public IEnumerable<YoutubeVideoInfo> GetTrending(string countryCode)
+        {
+            var url = "https://www.youtube.com/feed/trending";
+            if (!string.IsNullOrEmpty(countryCode))
+            {
+                url += "?gl=" + countryCode;
+            }
+            var html = url.DownloadHTML();
+            var obj = JObject.Parse(html.GetYtInitialData());
+            var itemsAll = obj["contents"]["twoColumnBrowseResultsRenderer"]["tabs"][0]["tabRenderer"]["content"][
+                    "sectionListRenderer"]
+                ["contents"].SelectMany(c =>
+                    c["itemSectionRenderer"]["contents"][0]["shelfRenderer"]["content"]["expandedShelfContentsRenderer"]
+                        ["items"]
+                ).Select(c => c["videoRenderer"]);
+            foreach (var v in itemsAll)
+            {
+                var video = new YoutubeVideoInfo();
+                video.Id = v["videoId"] + string.Empty;
+                video.Thumbnails = v["thumbnail"]["thumbnails"]
+                    .Select(c => c["url"] + string.Empty).ToArray();
+                video.Title = v["title"]["simpleText"] + string.Empty;
+                video.RichThumbnail =
+                    v["richThumbnail"]?["movingThumbnailRenderer"]?["movingThumbnailDetails"]?
+                        ["thumbnails"]?.Select(c => c["url"] + string.Empty).FirstOrDefault();
+                video.ViewsCount = v["viewCountText"]["simpleText"] + string.Empty;
+                video.Length = v["lengthText"]["simpleText"] + string.Empty;
+                video.ChannelThumbnail = 
+                    v["channelThumbnailSupportedRenderers"]
+                    ["channelThumbnailWithLinkRenderer"]["thumbnail"]
+                    ["thumbnails"]
+                    .Select(c => c["url"] + string.Empty).ToArray();
+                yield return video;
             }
         }
     }

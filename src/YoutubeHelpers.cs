@@ -12,28 +12,28 @@ namespace YoutuBot
 {
     public static class YoutubeHelpers
     {
-        public static YoutubeVideoComment[] ParseCommentsResponse(JArray contents)
+        public static YoutubeVideoCommentInfo[] ParseCommentsResponse(JArray contents)
         {
             //gets all comments
             //var continuationContents = response["response"]["continuationContents"]["itemSectionContinuation"]["contents"];
 
             //var itemSectionContinuation = continuationContents["itemSectionContinuation"];
-            List<YoutubeVideoComment> allRootComments = new List<YoutubeVideoComment>();
+            List<YoutubeVideoCommentInfo> allRootComments = new List<YoutubeVideoCommentInfo>();
             foreach (var content in contents)
             {
-                YoutubeVideoComment comment = new YoutubeVideoComment();
+                YoutubeVideoCommentInfo commentInfo = new YoutubeVideoCommentInfo();
                 var c = content["commentThreadRenderer"]["comment"]["commentRenderer"];
-                comment.Id= c["commentId"] + string.Empty;
-                comment.Text= c["contentText"]["simpleText"] + string.Empty;
-                comment.AuthorName= c["authorText"]["simpleText"] + string.Empty;
-                comment.AuthorThumbnails =
+                commentInfo.Id= c["commentId"] + string.Empty;
+                commentInfo.Text= c["contentText"]["simpleText"] + string.Empty;
+                commentInfo.AuthorName= c["authorText"]["simpleText"] + string.Empty;
+                commentInfo.AuthorThumbnails =
                     c["authorThumbnail"]["thumbnails"].Select(cc => cc["url"] + string.Empty).ToArray();
-                comment.AuthorChannelId = c["authorEndpoint"]["commandMetadata"]["webCommandMetadata"]["url"].ToString()
+                commentInfo.AuthorChannelId = c["authorEndpoint"]["commandMetadata"]["webCommandMetadata"]["url"].ToString()
                     .RemoveThisFirst("/channel/");
-                comment.LikeCount = c["likeCount"] + string.Empty;
-                comment.ReplyCount = c["publishedTimeText"]["replyCount"] + string.Empty;
-                comment.AuthorIsChannelOwner = c["publishedTimeText"]["authorIsChannelOwner"] + string.Empty;
-                comment.PublishedTime = c["publishedTimeText"]["runs"].Select(r => r["text"] + string.Empty)
+                commentInfo.LikeCount = c["likeCount"] + string.Empty;
+                commentInfo.ReplyCount = c["publishedTimeText"]["replyCount"] + string.Empty;
+                commentInfo.AuthorIsChannelOwner = c["publishedTimeText"]["authorIsChannelOwner"] + string.Empty;
+                commentInfo.PublishedTime = c["publishedTimeText"]["runs"].Select(r => r["text"] + string.Empty)
                     .FirstOrDefault();
                 var replies = c["replies"];
                 if (replies != null)
@@ -41,11 +41,11 @@ namespace YoutuBot
                     var continuations = replies["commentRepliesRenderer"]["continuations"].FirstOrDefault();
                     if (continuations != null)
                     {
-                        comment.TokenContinuation = continuations["nextContinuationData"]["continuation"] + string.Empty;
-                        comment.TokenClickTrackingParams = continuations["nextContinuationData"]["clickTrackingParams"] + string.Empty;
+                        commentInfo.TokenContinuation = continuations["nextContinuationData"]["continuation"] + string.Empty;
+                        commentInfo.TokenClickTrackingParams = continuations["nextContinuationData"]["clickTrackingParams"] + string.Empty;
                     }
                 }
-                allRootComments.Add(comment);
+                allRootComments.Add(commentInfo);
             }
 
             return allRootComments.ToArray();
@@ -70,7 +70,7 @@ namespace YoutuBot
             return string.Empty;
         }
 
-        public static void ParseYoutubeVideo(string videoId, out string visitorInfo1Live, out string ysc,
+        public static void ParseYoutubeVideoTokens(string videoId, out string visitorInfo1Live, out string ysc,
             out string ctoken, out string session_token, out string itct)
         {
             var youtubeVideoUrl = "https://www.youtube.com/watch?v=" + videoId;
@@ -94,7 +94,15 @@ namespace YoutuBot
             visitorInfo1Live = cookieHeader.GetStringBetween("VISITOR_INFO1_LIVE=", ";");
             ysc = cookieHeader.GetStringBetween("YSC=", ";");
 
-            var html = new StreamReader(responseObj.GetResponseStream()).ReadToEnd();
+            var stream = responseObj.GetResponseStream();
+            if (stream == null)
+            {
+                ctoken = null;
+                session_token = null;
+                itct = null;
+                return;
+            }
+            var html = new StreamReader(stream).ReadToEnd();
             ctoken = html.GetStringBetween("{\"nextContinuationData\":{\"continuation\":\"", "\"");
             session_token = html.GetStringBetween(",\"XSRF_TOKEN\":\"", "\"");
             itct = html.GetStringBetween("itct%3D", "%253D");

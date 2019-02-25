@@ -1,6 +1,6 @@
 namespace YoutuBot.Models
 {
-    public class YoutubeVideoStream
+    public class YoutubeVideoStreamInfo
     {
         public string ITag { get; set; }
         public string Url { get; set; }
@@ -16,5 +16,10 @@ namespace YoutuBot.Models
         public string ApproxDurationMs { get; set; }
         public string AudioSampleRate { get; set; }
         public string MimeType { get; set; }
+
+        public override string ToString()
+        {
+            return QualityLabel + " , " + MimeType;
+        }
     }
 }

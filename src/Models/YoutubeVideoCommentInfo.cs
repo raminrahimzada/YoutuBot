@@ -1,6 +1,6 @@
 ﻿namespace YoutuBot.Models
 {
-    public class YoutubeVideoComment
+    public class YoutubeVideoCommentInfo
     {
         public string Id { get; set; }
         public string Text { get; set; }
@@ -18,5 +18,10 @@
         public string TokenClickTrackingParams { get; set; }
         //----------------------------
 
+
+        public override string ToString()
+        {
+            return AuthorName + " : " + Text;
+        }
     }
 }

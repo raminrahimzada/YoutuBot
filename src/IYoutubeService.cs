@@ -6,14 +6,17 @@ namespace YoutuBot
     public interface IYoutubeService
     {
         YoutubeChannelInfo GetChannelInfo(string channelId);
-        YoutubePlayList GetPlayList(string playlistId, int maxItemsCount = 0);
-        IEnumerable<YoutubePlayList> GetUserPlayLists(string userId);
+        YoutubePlayListInfo GetPlayList(string playlistId, int maxItemsCount = 0);
+        IEnumerable<YoutubePlayListInfo> GetUserPlayLists(string userId);
         YoutubeVideoInfo GetVideo(string videoId);
         /// <summary>
         /// Comments are fetching 20 by 20 so each enumeration causes new request and takes time
         /// </summary>
         /// <param name="videoId"></param>
         /// <returns></returns>
-        IEnumerable<YoutubeVideoComment[]> GetRootComments(string videoId);
+        IEnumerable<YoutubeVideoCommentInfo[]> GetRootComments(string videoId);
+
+        IEnumerable<YoutubeVideoInfo> SearchForVideo(string query, int page);
+        IEnumerable<YoutubeVideoInfo> GetTrending(string countryCode);
     }
 }
