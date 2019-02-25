@@ -40,6 +40,7 @@ Non-Legal Youtube api , No quotas , no request limits and no Api-Keys needed
 17. Downloadable Media Streams
 18. Is HD
 19. License
+20. <b>All Root Comments</b>
 
 
 # Media Stream Info :
