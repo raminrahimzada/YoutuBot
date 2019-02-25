@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json.Linq;
+using YoutuBot.Models;
 
 namespace YoutuBot
 {
@@ -30,10 +31,10 @@ namespace YoutuBot
                 playList.Id = p["playlistId"] + string.Empty;
                 playList.Thumbnail = p["thumbnail"]["thumbnails"][0]["url"] + string.Empty;
                 playList.Title = p["title"]["runs"].Select(c => c["text"] + string.Empty).JoinWith("\n");
-                playList.VideoCount = p["videoCountText"]["simpleText"] + String.Empty;
-                playList.PublishedTime = p["publishedTimeText"]["simpleText"] + String.Empty;
+                playList.VideoCount = p["videoCountText"]["simpleText"] + string.Empty;
+                playList.PublishedTime = p["publishedTimeText"]["simpleText"] + string.Empty;
                 if (string.IsNullOrEmpty(playList.VideoCount))
-                    playList.VideoCount = p["videoCountShortText"]["simpleText"] + String.Empty;
+                    playList.VideoCount = p["videoCountShortText"]["simpleText"] + string.Empty;
                 playList.SidebarThumbnails = p["sidebarThumbnails"]
                     ?.Select(c => c["thumbnails"][0]["url"] + string.Empty)
                     .ToArray();
@@ -71,7 +72,7 @@ namespace YoutuBot
             //var query = url_encoded_fmt_stream_map.ParseQueryString();
             var args = obj["args"];
             video.Author = args["author"]+string.Empty;
-            var player_response = JObject.Parse(args["player_response"] + string.Empty);
+            var playerResponse = JObject.Parse(args["player_response"] + string.Empty);
 
             video.Title = args["title"]+string.Empty;
             video.Thumbnail = args["thumbnail_url"]+string.Empty;
@@ -82,7 +83,7 @@ namespace YoutuBot
             //var video_id = args["video_id"];
             //var adaptive_fmts = args["adaptive_fmts"].ToString().ParseQueryString().ToArray();
             video.Watermark = args["watermark"]+string.Empty;
-            var videoDetails = player_response["videoDetails"];
+            var videoDetails = playerResponse["videoDetails"];
 
             video.Title = videoDetails["title"] + string.Empty;
             video.Description = videoDetails["shortDescription"] + string.Empty;
@@ -106,10 +107,10 @@ namespace YoutuBot
                 video.UserId=videoSecondaryInfoRenderer["owner"]["videoOwnerRenderer"]["navigationEndpoint"]["commandMetadata"]
                     ["webCommandMetadata"]["url"].ToString().RemoveThis("/user/");
 
-                video.PublishedTime= videoSecondaryInfoRenderer["dateText"]["simpleText"] + String.Empty;
+                video.PublishedTime= videoSecondaryInfoRenderer["dateText"]["simpleText"] + string.Empty;
                 video.CategoryId =
                     videoSecondaryInfoRenderer["metadataRowContainer"]["metadataRowContainerRenderer"]["rows"][0]
-                        ["metadataRowRenderer"]["contents"].Select(c => c["runs"][0]["text"] + String.Empty).FirstOrDefault();
+                        ["metadataRowRenderer"]["contents"].Select(c => c["runs"][0]["text"] + string.Empty).FirstOrDefault();
 
 
                 var twoColumnWatchNextResults =
@@ -138,7 +139,7 @@ namespace YoutuBot
                 }
             }
 
-            var streamingData = player_response["streamingData"]["formats"];
+            var streamingData = playerResponse["streamingData"]["formats"];
             video.VideoStreams = new List<YoutubeVideoStream>();
             foreach (var vs in streamingData)
             {
@@ -187,7 +188,7 @@ namespace YoutuBot
             {
                 YoutubeChannelInfo innerChannel = new YoutubeChannelInfo();
                 innerChannel.Id = friendChannel["channelId"] + string.Empty;
-                innerChannel.Name = friendChannel["title"]["runs"][0]["text"] + String.Empty;
+                innerChannel.Name = friendChannel["title"]["runs"][0]["text"] + string.Empty;
                 innerChannel.SubscriptionCount = friendChannel["subscriberCountText"]["simpleText"] + string.Empty;
                 innerChannel.Thumbnails = friendChannel["thumbnail"]["thumbnails"]
                     .Select(c => c["url"] + string.Empty).ToArray();
@@ -202,7 +203,7 @@ namespace YoutuBot
                 {
                     YoutubeChannelInfo innerChannel = new YoutubeChannelInfo();
                     innerChannel.Id = relatedChannel["channelId"] + string.Empty;
-                    innerChannel.Name = relatedChannel["title"]["runs"][0]["text"] + String.Empty;
+                    innerChannel.Name = relatedChannel["title"]["runs"][0]["text"] + string.Empty;
                     innerChannel.SubscriptionCount = relatedChannel["subscriberCountText"]["simpleText"] + string.Empty;
                     innerChannel.Thumbnails = relatedChannel["thumbnail"]["thumbnails"]
                         .Select(c => c["url"] + string.Empty).ToArray();
@@ -238,7 +239,7 @@ namespace YoutuBot
                             if (channelVideoPlayerRenderer["description"]["simpleText"] != null)
                             {
                                 video.Description =
-                                    channelVideoPlayerRenderer["description"]["simpleText"] + String.Empty;
+                                    channelVideoPlayerRenderer["description"]["simpleText"] + string.Empty;
                             }
                             else
                             {
@@ -269,10 +270,10 @@ namespace YoutuBot
             var jsonString = url.DownloadHTML();
             var obj = JObject.Parse(jsonString);
             YoutubePlayList playList = new YoutubePlayList();
-            playList.Title = obj["title"] + String.Empty;
-            playList.Description = obj["description"] + String.Empty;
-            playList.AuthorName = obj["author"] + String.Empty;
-            playList.Views = obj["views"] + String.Empty;
+            playList.Title = obj["title"] + string.Empty;
+            playList.Description = obj["description"] + string.Empty;
+            playList.AuthorName = obj["author"] + string.Empty;
+            playList.Views = obj["views"] + string.Empty;
             JArray videos = (JArray)obj["video"];
 
             playList.Videos = new List<YoutubeVideoInfo>();
@@ -305,6 +306,50 @@ namespace YoutuBot
 
             return playList;
 
+        }
+
+
+
+        public  IEnumerable<YoutubeVideoComment[]> GetRootComments(string videoId)
+        {
+            string session_token, itct, visitorInfo1Live, xsrf_token, ysc;
+            YoutubeHelpers.ParseYoutubeVideo(videoId, out visitorInfo1Live, out ysc, out xsrf_token, out session_token, out itct);
+            //equal in beginning
+            string continuationDefault = xsrf_token;
+            //here contains lots of other data and some tokens for getting other comments
+            var response = YoutubeHelpers.GetYoutubeComments(videoId, continuationDefault, itct, session_token, visitorInfo1Live, ysc);
+            //yield return DebugCommentsResponse(response);
+
+            JObject itemSectionContinuation = (JObject)response["response"]["continuationContents"]["itemSectionContinuation"];
+            //var serviceTrackingParams = response["response"]["responseContext"]["serviceTrackingParams"];
+            //var trackingParams = itemSectionContinuation["trackingParams"] + string.Empty;
+
+            while (true)
+            {
+                var continuations = (JArray)itemSectionContinuation["continuations"];
+                //if (continuations == null) break;
+                if (continuations == null)
+                {
+                    JArray contents = (JArray)itemSectionContinuation["contents"];
+                    var latestRemainingComments = YoutubeHelpers.ParseCommentsResponse(contents);
+                    yield return latestRemainingComments;
+                    break;
+                }
+                var nextContinuationData = continuations[0]["nextContinuationData"];
+                var continuationFirst = nextContinuationData["continuation"] + string.Empty;
+                var clickTrackingParams = nextContinuationData["clickTrackingParams"] + string.Empty;
+                response = YoutubeHelpers.GetYoutubeComments(videoId,
+                    continuationFirst,
+                    clickTrackingParams, session_token, visitorInfo1Live, ysc);
+                itemSectionContinuation =
+                    (JObject)response["response"]["continuationContents"]["itemSectionContinuation"];
+                var current = YoutubeHelpers.ParseCommentsResponse((JArray)response["response"]["continuationContents"]["itemSectionContinuation"]["contents"]);
+                yield return current;
+                if (current.Length == 0)
+                {
+                    break;
+                }
+            }
         }
     }
 }

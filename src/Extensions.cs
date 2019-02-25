@@ -9,6 +9,16 @@ namespace YoutuBot
 {
     public static class Extensions
     {
+        public static string UrlEncode(this string str)
+        {
+            return str
+                .Replace(" ", "%20")
+                .Replace("!", "%21")
+                .Replace("\"", "%22")
+                .Replace("#", "%23")
+                //...
+                .Replace("=", "%3D");
+        }
         public static string JoinWith<T>(this IEnumerable<T> source, string separator)
         {
             return string.Join(separator, source);

@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace YoutuBot
+namespace YoutuBot.Models
 {
     public class YoutubeVideoInfo
     {
