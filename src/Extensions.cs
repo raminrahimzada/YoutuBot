@@ -9,6 +9,11 @@ namespace YoutuBot
 {
     public static class Extensions
     {
+        public static string Sqlize(this string str)
+        {
+            if (string.IsNullOrEmpty(str)) return string.Empty;
+            return str.Replace("'", "''");
+        }
         public static string UrlEncode(this string str)
         {
             return str
@@ -19,8 +24,9 @@ namespace YoutuBot
                 //...
                 .Replace("=", "%3D");
         }
-        public static string JoinWith<T>(this IEnumerable<T> source, string separator)
+        public static string JoinWith<T>(this IEnumerable<T> source, string separator = "`")
         {
+            if (source == null) return string.Empty;
             return string.Join(separator, source);
         }
         public static string ReplaceLast(this string source, string find, string replace)
@@ -36,6 +42,7 @@ namespace YoutuBot
         public static string GetStringBetween(this string text, string start, string end)
         {
             var id1 = text.IndexOf(start, StringComparison.Ordinal);//0
+            if (id1 == -1) return null;
             var txt = text.Substring(id1 + start.Length);
             var id2 = txt.IndexOf(end, StringComparison.Ordinal);//12
             txt = txt.Substring(0, id2);
@@ -62,6 +69,21 @@ namespace YoutuBot
             }
         }
 
+        public static int CountOf(this string str, string word)
+        {
+            if (string.IsNullOrEmpty(str)) return 0;
+            int count = 0;
+            var id = 0;
+            do
+            {
+                id = str.IndexOf(word, id, StringComparison.InvariantCultureIgnoreCase);
+                if (id > 0) count++;
+                if (id > str.Length) break;
+                if (id == -1) break;
+                id = id + word.Length;
+            } while (id > 0);
+            return count;
+        }
         public static string RemoveThisFirst(this string str, string none)
         {
             return str.ReplaceFirst(none, string.Empty);
@@ -84,7 +106,7 @@ namespace YoutuBot
             }
             return text.Substring(0, pos) + replace + text.Substring(pos + search.Length);
         }
-        public static IEnumerable<KeyValuePair<string, string>> ParseQueryString(this string s)
+        private static IEnumerable<KeyValuePair<string, string>> ParseQueryString(this string s)
         {
             // remove anything other than query string from url
             if (s.Contains("?"))
@@ -96,6 +118,22 @@ namespace YoutuBot
                 
                 .Select(strings => new KeyValuePair<string,string>(strings[0],
                 strings.Length == 2 ? strings[1].UrlDecode() : string.Empty));
+        }
+
+        public static KeyValuePair<string,string>[] ParseQS(this string str)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(str)) return new KeyValuePair<string, string>[0];
+                return
+                    str?.Split('&')
+                        .Select(c => new KeyValuePair<string, string>(c.Split('=')[0],
+                            Uri.UnescapeDataString(c.Split('=')[1]))).ToArray();
+            }
+            catch (Exception e)
+            {
+                return str.ParseQueryString().ToArray();
+            }
         }
         public static string UrlDecode(this string url)
         {

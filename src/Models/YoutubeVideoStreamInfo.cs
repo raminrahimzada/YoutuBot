@@ -1,8 +1,14 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace YoutuBot.Models
 {
     public class YoutubeVideoStreamInfo
     {
+        [Key] 
+        public string Id { get; set; }
+
         public string ITag { get; set; }
+
         public string Url { get; set; }
         public string Width { get; set; }
         public string Height { get; set; }

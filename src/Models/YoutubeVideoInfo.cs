@@ -4,6 +4,8 @@ namespace YoutuBot.Models
 {
     public class YoutubeVideoInfo
     {
+        public string Id { get; set; }
+
         public string IsHD;
         public string CCLicense;
         public string IsCC;
@@ -16,7 +18,6 @@ namespace YoutuBot.Models
         public string DislikesCount { get; set; }
         public string Title { get; set; }
         public string AddedOn { get; set; }
-        public string Id { get; set; }
         public string TimeCreated { get; set; }
         public string Description { get; set; }
         public string Length { get; set; }

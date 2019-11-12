@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 
 namespace YoutuBot.Models
 {
@@ -16,6 +17,9 @@ namespace YoutuBot.Models
         public string[] Tags { get; set; }
         public List<YoutubeVideoInfo> Uploads { get; set; }
         public string UserId { get; set; }
+        
+        //exetra
+        public string FromChannelId { get; set; }
 
         public override string ToString()
         {

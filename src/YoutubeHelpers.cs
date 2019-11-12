@@ -25,7 +25,17 @@ namespace YoutuBot
                 var c = content["commentThreadRenderer"]["comment"]["commentRenderer"];
                 commentInfo.Id= c["commentId"] + string.Empty;
                 commentInfo.Text= c["contentText"]["simpleText"] + string.Empty;
-                commentInfo.AuthorName= c["authorText"]["simpleText"] + string.Empty;
+                if (string.IsNullOrEmpty(commentInfo.Text))
+                {
+                    commentInfo.Text = c["contentText"]?["runs"]?[0]?["text"] + string.Empty;
+                }
+
+                if (string.IsNullOrEmpty(commentInfo.Text))
+                {
+                    ;
+                }
+
+                    commentInfo.AuthorName= c["authorText"]["simpleText"] + string.Empty;
                 commentInfo.AuthorThumbnails =
                     c["authorThumbnail"]["thumbnails"].Select(cc => cc["url"] + string.Empty).ToArray();
                 commentInfo.AuthorChannelId = c["authorEndpoint"]["commandMetadata"]["webCommandMetadata"]["url"].ToString()

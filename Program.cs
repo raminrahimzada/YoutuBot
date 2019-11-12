@@ -8,7 +8,14 @@ namespace YoutuBot
         {
             //our awesome service
             IYoutubeService service = new YoutubeService();
-            
+
+            Bot.BrowseOnlyChannels(service);
+            while (true)
+            {
+                
+            }
+           
+
             //browse channels for popular categories
             //returns pairs as following: category name and list of channels
             var channels = service.BrowseChannels().ToArray();
