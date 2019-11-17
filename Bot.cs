@@ -10,7 +10,7 @@ namespace YoutuBot
 {
     class Bot
     {
-        public static IYoutubeService Service;
+        public static IYoutubeService Service => C.Service;
         static readonly ConcurrentBag<string> _cache=new ConcurrentBag<string>();
         public static object sync=new object();
         public static BlockingCollection<KeyValuePair<string, string>> _queue = new BlockingCollection<KeyValuePair<string, string>>();
@@ -93,10 +93,8 @@ namespace YoutuBot
             }
         }
         private static ConcurrentBag<string> _videoCache=new ConcurrentBag<string>();
-        public static void ExtendAllVideos(IYoutubeService service)
+        public static void ExtendAllVideos()
         {
-            Service = service;
-
             C.WriteLine("loading videos from db..");
             var videoIds = Sql
                 .Execute<string>(
@@ -113,21 +111,27 @@ namespace YoutuBot
                 ExtendVideo(videoId);
             }
         }
-        public static void AnalizeChannelsOnDb()
+        public static void AnalyzeChannelsOnDb()
         {
-            var channelIdList = Sql.Execute<string>("select Id from Channels");
+            //var channelIdList = Sql.Execute<string>("select Id from Channels");
+            var channelIdList = Sql.Execute<string>("select DISTINCT(ChannelId) from Videos with (NOLOCK) where ChannelId not in (select DISTINCT(Id) from Channels)");
             C.WriteLine("found channels " + channelIdList.Length);
             var videoIds = Sql.Execute<string>("select Id from Videos");
             foreach (var channelId in channelIdList)
             {
-                var channel = Service.GetChannelInfo(channelId);
-                C.WriteLine("started channel : " + channel.Name);
-                if (channel.Uploads != null)
+                try
                 {
+                    var channel = Service.GetChannelInfo(channelId);
+                    if (channel == null) continue;
+
+                    SqlStorage.Save(channel);
+                    C.WriteLine("started channel : " + channel.Name);
+                    if (channel.Uploads == null) continue;
+                    
                     foreach (var v in channel.Uploads)
                     {
-                        if(string.IsNullOrEmpty(v.Id)) continue;
-                        if(videoIds.Contains(v.Id)) continue;
+                        if (string.IsNullOrEmpty(v.Id)) continue;
+                        if (videoIds.Contains(v.Id)) continue;
 
                         var video = Service.GetVideo(v.Id);
 
@@ -140,6 +144,10 @@ namespace YoutuBot
                             C.WriteLine("video not found with id `{0}`", v.Id);
                         }
                     }
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e);
                 }
             }
 
@@ -165,6 +173,63 @@ namespace YoutuBot
                     SqlStorage.Save(channel);
                 }
             }
+        }
+
+        public static void BrowseAllVideosComments()
+        {
+            C.WriteLine("loading videos");
+            var videoIds = Sql
+                .Execute<string>(
+                    "select top(1000) Id from Videos where Id not in (select DISTINCT(VideoId) from Comments )  order by NEWID() ")
+                .ToList();
+            C.WriteLine("loaded videos");
+
+            var count = 0;
+            foreach (var videoId in videoIds)
+            {
+                try
+                {
+                    if (string.IsNullOrEmpty(videoId)) return;
+                    C.WriteLine("started video with Id: " + videoId);
+                    var commentsBatch = Service.GetRootComments(videoId);
+                    foreach (var comments in commentsBatch)
+                    {
+                        try
+                        {
+                            count += comments.Length;
+                            C.Write(comments.Length + "|");
+                            foreach (var comment in comments)
+                            {
+                                comment.VideoId = videoId;
+                            }
+                            if (comments.Any(c => string.IsNullOrEmpty(c.VideoId)))
+                            {
+                                ;
+                            }
+                            SqlStorage.Save(comments);
+                        }
+                        catch (Exception e)
+                        {
+                            try
+                            {
+                                File.AppendAllLines("error.comments", new[] {videoId});
+                            }
+                            catch (Exception exception)
+                            {
+                                C.WriteLine("\t\t" + exception.Message);
+                            }
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    //Thread.Sleep(TimeSpan.FromSeconds(10));
+                    C.WriteLine(e.Message);
+                    //if(retryCount<3) goto start;
+                    //throw;
+                }
+            }
+            C.WriteLine("\nfound.comments count -> " + count);
         }
     }
 }

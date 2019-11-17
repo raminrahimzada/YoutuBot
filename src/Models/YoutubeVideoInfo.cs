@@ -20,7 +20,7 @@ namespace YoutuBot.Models
         public string AddedOn { get; set; }
         public string TimeCreated { get; set; }
         public string Description { get; set; }
-        public string Length { get; set; }
+        public decimal? Length { get; set; }
         public string UserId { get; set; }
         public string Thumbnail { get; set; }
         public string Privacy { get; set; }
@@ -28,7 +28,6 @@ namespace YoutuBot.Models
         public string Author { get; set; }
         public string PublishedTime { get; set; }
         public List<YoutubeVideoStreamInfo> VideoStreams { get; set; }
-        public string Watermark { get; set; }
         public string IsLiveContent { get; set; }
         public string ChannelId { get; set; }
         public List<YoutubeVideoInfo> NextVideos { get; set; }

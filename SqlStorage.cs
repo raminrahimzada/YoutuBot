@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text;
 using System.Threading.Tasks;
 using YoutuBot.Models;
 
@@ -8,19 +9,35 @@ namespace YoutuBot
     {
         public static void Save(YoutubeChannelInfo channel)
         {
-            Console.Write("saving... " + channel.Name+"\t");
+            if (channel == null) return;
+            if (string.IsNullOrEmpty(channel.Id)) return;
+            C.Write("saving... " + channel.Name+"\t");
             var query = QueryGenerator.Generate(channel);
             Sql.Execute(query);
-            Console.WriteLine("saved ... ");
+            C.WriteLine("saved ... ");
         }
 
         public static void Save(YoutubeVideoInfo video)
         {
             if (video == null) return;
-            Console.Write("saving... " + video.Title+ "\t");
+            if (string.IsNullOrEmpty(video.Id)) return;
+            C.Write("saving... " + video.Title+ "\t");
             var query = QueryGenerator.Generate(video);
             Sql.Execute(query);
-            Console.WriteLine("saved ... ");
+            C.WriteLine("saved ... ");
+        }
+
+        public static void Save(YoutubeVideoCommentInfo[] comments)
+        {
+            var sb = new StringBuilder();
+            foreach (var comment in comments)
+            {
+                sb.AppendLine(QueryGenerator.Generate(comment));
+            }
+            if (sb.Length > 0)
+            {
+                Sql.Execute(sb.ToString());
+            }
         }
     }
 }

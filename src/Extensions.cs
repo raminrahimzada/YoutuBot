@@ -9,6 +9,35 @@ namespace YoutuBot
 {
     public static class Extensions
     {
+        public static IEnumerable<IEnumerable<TSource>> Batch<TSource>(
+            this IEnumerable<TSource> source, int size)
+        {
+            TSource[] bucket = null;
+            var count = 0;
+
+            foreach (var item in source)
+            {
+                if (bucket == null)
+                    bucket = new TSource[size];
+
+                bucket[count++] = item;
+                if (count != size)
+                    continue;
+
+                yield return bucket;
+
+                bucket = null;
+                count = 0;
+            }
+
+            if (bucket != null && count > 0)
+                yield return bucket.Take(count);
+        }
+        public static string Sqlize(this decimal? d)
+        {
+            if (d == null) return "0.0";
+            return d.ToString();
+        }
         public static string Sqlize(this string str)
         {
             if (string.IsNullOrEmpty(str)) return string.Empty;
@@ -16,6 +45,7 @@ namespace YoutuBot
         }
         public static string UrlEncode(this string str)
         {
+            if (string.IsNullOrEmpty(str)) return string.Empty;
             return str
                 .Replace(" ", "%20")
                 .Replace("!", "%21")
@@ -120,6 +150,15 @@ namespace YoutuBot
                 strings.Length == 2 ? strings[1].UrlDecode() : string.Empty));
         }
 
+        public static decimal? ParseDecimal(this string str)
+        {
+            if (decimal.TryParse(str,out var d))
+            {
+                return d;
+            }
+
+            return null;
+        }
         public static KeyValuePair<string,string>[] ParseQS(this string str)
         {
             try
@@ -164,9 +203,11 @@ namespace YoutuBot
                 responseObj.Dispose();
                 return string.Empty;
             }
-
-            var html = new StreamReader(responseStream).ReadToEnd();
-            return html;
+            var reader = new StreamReader(responseStream);
+            using (reader)
+            {
+                return reader.ReadToEnd();
+            }
         }
     }
 }

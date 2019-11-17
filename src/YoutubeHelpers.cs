@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Cache;
 using System.Text;
+using System.Threading;
 using Newtonsoft.Json.Linq;
 using YoutuBot.Models;
 
@@ -22,6 +23,7 @@ namespace YoutuBot
             foreach (var content in contents)
             {
                 YoutubeVideoCommentInfo commentInfo = new YoutubeVideoCommentInfo();
+                commentInfo.Extra = content.ToString();
                 var c = content["commentThreadRenderer"]["comment"]["commentRenderer"];
                 commentInfo.Id= c["commentId"] + string.Empty;
                 commentInfo.Text= c["contentText"]["simpleText"] + string.Empty;
@@ -35,9 +37,9 @@ namespace YoutuBot
                     ;
                 }
 
-                    commentInfo.AuthorName= c["authorText"]["simpleText"] + string.Empty;
+                    commentInfo.AuthorName= c["authorText"]?["simpleText"] + string.Empty;
                 commentInfo.AuthorThumbnails =
-                    c["authorThumbnail"]["thumbnails"].Select(cc => cc["url"] + string.Empty).ToArray();
+                    c["authorThumbnail"]?["thumbnails"].Select(cc => cc["url"] + string.Empty).ToArray();
                 commentInfo.AuthorChannelId = c["authorEndpoint"]["commandMetadata"]["webCommandMetadata"]["url"].ToString()
                     .RemoveThisFirst("/channel/");
                 commentInfo.LikeCount = c["likeCount"] + string.Empty;
@@ -118,7 +120,30 @@ namespace YoutuBot
             itct = html.GetStringBetween("itct%3D", "%253D");
         }
 
-        public static JObject GetYoutubeComments(string videoId, string continuation, string itct, string session_token,
+        public static JObject GetYoutubeCommentsSafe(string videoId, string continuation, string itct, string session_token,
+            string visitorInfo1Live, string ysc)
+        {
+            int maxRetry = 5;
+            int i = 0;
+            start:
+            try
+            {
+                return GetYoutubeComments(videoId, continuation, itct, session_token, visitorInfo1Live, ysc);
+            }
+            catch (Exception e)
+            {
+                C.WriteLine("-------------------------------------------");
+                C.WriteLine(e.Message);
+                Thread.Sleep(TimeSpan.FromSeconds(5));
+                i++;
+                if (i < maxRetry) goto start;
+                else
+                {
+                    throw;
+                }
+            }
+        }
+        static JObject GetYoutubeComments(string videoId, string continuation, string itct, string session_token,
             string visitorInfo1Live, string ysc)
         {
             Uri uri = new Uri("https://www.youtube.com");
@@ -162,15 +187,22 @@ namespace YoutuBot
                 stream.Write(data, 0, data.Length);
             }
 
-            var responseObj = (HttpWebResponse) request.GetResponse();
-            var responseStream = responseObj.GetResponseStream();
-            if (responseStream == null) return null;
-            var responseString = new StreamReader(responseStream).ReadToEnd();
-            responseObj.Close();
-            responseObj.Dispose();
+            var responseRaw = request.GetResponse();
+            if (responseRaw is HttpWebResponse responseObj)
+            {
+                var responseStream = responseObj.GetResponseStream();
+                if (responseStream == null) return null;
+                using (var reader = new StreamReader(responseStream))
+                {
+                    var responseString = reader.ReadToEnd();
+                    responseObj.Close();
+                    responseObj.Dispose();
+                    var response = JObject.Parse(responseString);
+                    return response;
+                }
+            }
 
-            var response = JObject.Parse(responseString);
-            return response;
+            return null;
         }
     }
 }

@@ -3,6 +3,7 @@
     public class YoutubeVideoCommentInfo
     {
         public string Id { get; set; }
+        public string VideoId { get; set; }
         public string Text { get; set; }
         public string AuthorName { get; set; }
         public string[] AuthorThumbnails { get; set; }
@@ -11,6 +12,7 @@
         public string LikeCount { get; set; }
         public string AuthorIsChannelOwner { get; set; }
         public string ReplyCount { get; set; }
+        public string Extra { get; set; }
 
         //----------------------------
         //these two parameters will be used to fetch inner comments

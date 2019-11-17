@@ -8,8 +8,10 @@ namespace YoutuBot
     public class Sql
     {
         private static SqlConnection _connection;
+
         public static string  connectionString =
-            "Data Source=MATRIX\\SERVER17;Initial Catalog=Youtube;User Id=sa;Password=badimcandolmasi;";
+            "Data Source=MATRIX\\SERVER17;Initial Catalog=Youtube;User Id=sa;Password=badimcandolmasi;Connect Timeout=50000;";
+        
         private static void Ensure()
         {
             if (_connection == null)
@@ -20,8 +22,11 @@ namespace YoutuBot
 
         public static T[] Execute<T>(string query)
         {
-            Ensure();
-            return _connection.Query<T>(query).ToArray();
+            lock (sync)
+            {
+                Ensure();
+                return _connection.Query<T>(query).ToArray();
+            }
         }
         public static object sync=new object();
         public static void Execute(string query)

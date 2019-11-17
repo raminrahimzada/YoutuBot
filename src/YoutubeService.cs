@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
-using System.Net;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json.Linq;
 using YoutuBot.Models;
@@ -76,7 +74,7 @@ namespace YoutuBot
             YoutubeVideoInfo video=new YoutubeVideoInfo();
             video.Id = videoId;
             //var thumbnail_url = obj["thumbnail_url"] + string.Empty;
-            video.Length = obj["length_seconds"] + string.Empty;
+            video.Length = (obj["length_seconds"] + string.Empty).ParseDecimal();
             //var url_encoded_fmt_stream_map = obj["url_encoded_fmt_stream_map"] + string.Empty;
             //var query = url_encoded_fmt_stream_map.ParseQueryString();
             var args = obj["args"];
@@ -90,9 +88,9 @@ namespace YoutuBot
             var adaptive_fmtsMap =
                 adaptive_fmts.ParseQS();
 
-            if (string.IsNullOrEmpty(video.Length))
+            if (video.Length==null|| video.Length.Value==0.0M)
             {
-                video.Length = adaptive_fmtsMap?.FirstOrDefault(c => c.Key == "dur").Value;
+                video.Length = adaptive_fmtsMap?.FirstOrDefault(c => c.Key == "dur").Value.ParseDecimal();
             }
 
            
@@ -106,7 +104,7 @@ namespace YoutuBot
             //var url_encoded_fmt_stream_map = args["url_encoded_fmt_stream_map"];
             //var video_id = args["video_id"];
             //var adaptive_fmts = args["adaptive_fmts"].ToString().ParseQueryString().ToArray();
-            video.Watermark = args["watermark"]+string.Empty;
+            //video.Watermark = args["watermark"]+string.Empty;
             var videoDetails = playerResponse["videoDetails"];
 
             video.Title = videoDetails["title"] + string.Empty;
@@ -114,12 +112,13 @@ namespace YoutuBot
             video.ViewsCount = videoDetails["viewCount"] + string.Empty;
             video.IsLiveContent = videoDetails["isLiveContent"] + string.Empty;
             video.ChannelId = videoDetails["channelId"] + string.Empty;
-            if (string.IsNullOrEmpty(video.Length) || double.Parse(video.Length) == 0.0)
-                video.Length = videoDetails["lengthSeconds"] + string.Empty;
+
+            if (video.Length==null || video.Length.Value== 0.0M)
+                video.Length = (videoDetails["lengthSeconds"] + string.Empty).ParseDecimal();
             if (string.IsNullOrEmpty(video.Keywords))
                 video.Keywords = ((JArray)videoDetails["keywords"])?.Select(x => x + string.Empty).ToArray().JoinWith(",");
-            ;
-            if (string.IsNullOrEmpty(video.Length)||double.Parse(video.Length)==0.0)
+            
+            if (video.Length == null || video.Length.Value == 0.0M)
             {
                 ;
             }
@@ -188,7 +187,7 @@ namespace YoutuBot
                             compactVideoRenderer["richThumbnail"]?["movingThumbnailRenderer"]?["movingThumbnailDetails"]?
                                 ["thumbnails"]?.Select(c => c["url"] + string.Empty).FirstOrDefault();
                         nextVideo.ViewsCount = compactVideoRenderer?["viewCountText"]?["simpleText"] + string.Empty;
-                        nextVideo.Length = compactVideoRenderer["lengthText"]?["simpleText"] + string.Empty;
+                        nextVideo.Length = (compactVideoRenderer["lengthText"]?["simpleText"] + string.Empty).ParseDecimal();
                         nextVideo.ChannelThumbnail = compactVideoRenderer["channelThumbnail"]?["thumbnails"]
                             ?.Select(c => c["url"] + string.Empty).ToArray();
                         video.NextVideos.Add(nextVideo);
@@ -224,6 +223,9 @@ namespace YoutuBot
 
         public YoutubeChannelInfo GetChannelInfo(string channelId)
         {
+            if (string.IsNullOrEmpty(channelId)) return null;
+            if (string.IsNullOrWhiteSpace(channelId)) return null;
+
             var url = $"https://www.youtube.com/channel/{channelId}?hl=en";
 
             YoutubeChannelInfo channel =new YoutubeChannelInfo();
@@ -231,7 +233,8 @@ namespace YoutuBot
             var html = url.DownloadHTML();
             channel.Name = html.GetStringBetweenAll("<title>", "</title>").FirstOrDefault(s=>s!="YouTube");
             var keywordsAll= html.GetStringBetweenAll("<meta name=\"keywords\" content=\"", "\">").ToArray();
-            channel.Keywords = keywordsAll.Skip(1).FirstOrDefault();
+            channel.Keywords = keywordsAll.FirstOrDefault(s =>
+                !s.Contains("video, sharing, camera phone, video phone, free, upload"));
 
             channel.Description = html.GetStringBetween("<meta property=\"og:description\" content=\"", "\">");
             channel.Tags = html.GetStringBetweenAll("<meta property=\"og:video:tag\" content=\"", "\">").ToArray();
@@ -243,7 +246,7 @@ namespace YoutuBot
             var ytInitialData = html.GetYtInitialData();
             var obj = JObject.Parse(ytInitialData);
             var secondaryContents =
-                obj["contents"]["twoColumnBrowseResultsRenderer"]?["secondaryContents"]?[
+                obj["contents"]?["twoColumnBrowseResultsRenderer"]?["secondaryContents"]?[
                         "browseSecondaryContentsRenderer"]?["contents"]?
                     .Select(c => c["verticalChannelSectionRenderer"]["items"]).ToArray();
             if (secondaryContents != null)
@@ -259,7 +262,6 @@ namespace YoutuBot
                     if (string.IsNullOrEmpty(innerChannel.SubscriptionCount))
                     {
                         innerChannel.SubscriptionCount = friendChannel["subscriberCountText"]?["runs"]?[0]?["text"] + string.Empty;
-
                     }
                     if (string.IsNullOrEmpty(innerChannel.SubscriptionCount))
                     {
@@ -294,8 +296,9 @@ namespace YoutuBot
                 ;
             }
 
-            var tabs = obj["contents"]["twoColumnBrowseResultsRenderer"]["tabs"].Select(c => c["tabRenderer"])
-                .Where(t => t != null);
+            var tabs = obj["contents"]?["twoColumnBrowseResultsRenderer"]?["tabs"]?.Select(c => c["tabRenderer"])
+                           .Where(t => t != null).ToArray() ?? new JToken[0];
+
             foreach (var tab in tabs)
             {
                 var _title = tab["title"] + string.Empty;
@@ -374,7 +377,7 @@ namespace YoutuBot
                 video.Id = v["encrypted_id"] + string.Empty;
                 video.TimeCreated = v["time_created"] + string.Empty;
                 video.Description = v["description"] + string.Empty;
-                video.Length = v["length_seconds"] + string.Empty;
+                video.Length = (v["length_seconds"] + string.Empty).ParseDecimal();
                 video.UserId = v["user_id"] + string.Empty;
                 video.Thumbnail = v["thumbnail"] + string.Empty;
                 video.Privacy = v["privacy"] + string.Empty;
@@ -398,10 +401,12 @@ namespace YoutuBot
             //equal in beginning
             string continuationDefault = xsrf_token;
             //here contains lots of other data and some tokens for getting other comments
-            var response = YoutubeHelpers.GetYoutubeComments(videoId, continuationDefault, itct, session_token, visitorInfo1Live, ysc);
+            var response = YoutubeHelpers.GetYoutubeCommentsSafe(videoId, continuationDefault, itct, session_token, visitorInfo1Live, ysc);
             //yield return DebugCommentsResponse(response);
 
-            JObject itemSectionContinuation = (JObject)response["response"]["continuationContents"]["itemSectionContinuation"];
+            JObject itemSectionContinuation = (JObject)response["response"]?["continuationContents"]?["itemSectionContinuation"];
+            if(itemSectionContinuation==null) yield break;
+
             //var serviceTrackingParams = response["response"]["responseContext"]["serviceTrackingParams"];
             //var trackingParams = itemSectionContinuation["trackingParams"] + string.Empty;
 
@@ -412,6 +417,10 @@ namespace YoutuBot
                 if (continuations == null)
                 {
                     JArray contents = (JArray)itemSectionContinuation["contents"];
+                    if (contents == null)
+                    {
+                        yield break;
+                    }
                     var latestRemainingComments = YoutubeHelpers.ParseCommentsResponse(contents);
                     yield return latestRemainingComments;
                     break;
@@ -419,12 +428,26 @@ namespace YoutuBot
                 var nextContinuationData = continuations[0]["nextContinuationData"];
                 var continuationFirst = nextContinuationData["continuation"] + string.Empty;
                 var clickTrackingParams = nextContinuationData["clickTrackingParams"] + string.Empty;
-                response = YoutubeHelpers.GetYoutubeComments(videoId,
+                response = YoutubeHelpers.GetYoutubeCommentsSafe(videoId,
                     continuationFirst,
                     clickTrackingParams, session_token, visitorInfo1Live, ysc);
                 itemSectionContinuation =
-                    (JObject)response["response"]["continuationContents"]["itemSectionContinuation"];
-                var current = YoutubeHelpers.ParseCommentsResponse((JArray)response["response"]["continuationContents"]["itemSectionContinuation"]["contents"]);
+                    (JObject)response["response"]?["continuationContents"]?["itemSectionContinuation"];
+                var contentsX =
+                    (JArray) response["response"]?["continuationContents"]?["itemSectionContinuation"]?["contents"];
+                if (contentsX == null)
+                {
+                    ;
+                }
+                var current = YoutubeHelpers.ParseCommentsResponse(contentsX);
+                if (current == null)
+                {
+                    ;
+                }
+                foreach (var info in current)
+                {
+                    info.VideoId = videoId;
+                }
                 yield return current;
                 if (current.Length == 0)
                 {
@@ -456,7 +479,7 @@ namespace YoutuBot
                 video.Id = v["encrypted_id"] + string.Empty;
                 video.TimeCreated = v["time_created"] + string.Empty;
                 video.Description = v["description"] + string.Empty;
-                video.Length = v["length_seconds"] + string.Empty;
+                video.Length = (v["length_seconds"] + string.Empty).ParseDecimal();
                 video.UserId = v["user_id"] + string.Empty;
                 video.Thumbnail = v["thumbnail"] + string.Empty;
                 video.Privacy = v["privacy"] + string.Empty;
@@ -494,7 +517,7 @@ namespace YoutuBot
                     v["richThumbnail"]?["movingThumbnailRenderer"]?["movingThumbnailDetails"]?
                         ["thumbnails"]?.Select(c => c["url"] + string.Empty).FirstOrDefault();
                 video.ViewsCount = v["viewCountText"]["simpleText"] + string.Empty;
-                video.Length = v["lengthText"]["simpleText"] + string.Empty;
+                video.Length = (v["lengthText"]["simpleText"] + string.Empty).ParseDecimal();
                 video.ChannelThumbnail = 
                     v["channelThumbnailSupportedRenderers"]
                     ["channelThumbnailWithLinkRenderer"]["thumbnail"]

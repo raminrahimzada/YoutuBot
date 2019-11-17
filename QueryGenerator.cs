@@ -64,8 +64,8 @@ GO
         }
         public static string Generate(YoutubeChannelInfo channel)
         {
-            var querySaveChannel = $@"declare @id varchar(50)='{channel.Id}';
-if not exists(select top(1) 1 from Channels where Id=@id)
+            var querySaveChannel = $@"
+if not exists(select top(1) 1 from Channels where Id='{channel.Id}')
 INSERT INTO [dbo].[Channels]
            ([Id]
            ,[Name]
@@ -78,7 +78,7 @@ INSERT INTO [dbo].[Channels]
            ,[UserId]
            ,[FromChannelId])
      VALUES
-           (@id
+           ('{channel.Id}'
            ,N'{channel.Name.Sqlize()}'
            ,N'{channel.LogoUrl.Sqlize()}'
            ,N'{channel.Keywords.Sqlize()}'
@@ -100,7 +100,7 @@ UPDATE [dbo].[Channels]
       ,[Tags] = N'{channel.Tags.JoinWith().Sqlize()}'
       ,[UserId] = N'{channel.UserId.Sqlize()}'
       ,[FromChannelId] =ISNULL(FromChannelId,'')+',{channel.FromChannelId.Sqlize()}'
- WHERE [Id] = @id;
+ WHERE [Id] = '{channel.Id}';
 ";
             var sb=new StringBuilder();
             sb.AppendLine(querySaveChannel);
@@ -118,6 +118,8 @@ UPDATE [dbo].[Channels]
 
         public static string Generate(YoutubeVideoInfo video)
         {
+            if (string.IsNullOrEmpty(video.Id)) return string.Empty;
+
             return $@"
 if NOT EXISTS(select TOP(1) 1 from Videos where Id='{video.Id.Sqlize()}')
 INSERT INTO [dbo].[Videos]
@@ -143,7 +145,6 @@ INSERT INTO [dbo].[Videos]
            ,[Duration]
            ,[Author]
            ,[PublishedTime]
-           ,[Watermark]
            ,[IsLiveContent]
            ,[ChannelId]
            ,[Thumbnails]
@@ -172,7 +173,6 @@ INSERT INTO [dbo].[Videos]
            ,N'{video.Duration.Sqlize()}'
            ,N'{video.Author.Sqlize()}'
            ,N'{video.PublishedTime.Sqlize()}'
-           ,N'{video.Watermark.Sqlize()}'
            ,N'{video.IsLiveContent.Sqlize()}'
            ,N'{video.ChannelId.Sqlize()}'
            ,N'{video.Thumbnails.JoinWith().Sqlize()}'
@@ -204,7 +204,6 @@ UPDATE [dbo].[Videos]
       ,[Duration] = N'{video.Duration.Sqlize()}'
       ,[Author] = N'{video.Author.Sqlize()}'
       ,[PublishedTime] = N'{video.PublishedTime.Sqlize()}'
-      ,[Watermark] = N'{video.Watermark.Sqlize()}'
       ,[IsLiveContent] = N'{video.IsLiveContent.Sqlize()}'
       ,[ChannelId] = N'{video.ChannelId.Sqlize()}'
       ,[Thumbnails] = N'{video.Thumbnails.JoinWith().Sqlize()}'
@@ -212,6 +211,58 @@ UPDATE [dbo].[Videos]
       ,[ChannelThumbnail] = N'{video.ChannelThumbnail.JoinWith().Sqlize()}'
  WHERE Id='{video.Id.Sqlize()}';
  ";
+        }
+
+        public static string Generate(YoutubeVideoCommentInfo comment)
+        {
+            if (string.IsNullOrEmpty(comment.VideoId))
+            {
+                ;
+            }
+            return $@"
+
+if(not exists(select top(1) 1 from [dbo].[Comments] where Id=N'{comment.Id.Sqlize()}'))
+INSERT INTO [dbo].[Comments]
+           ([Id]
+           ,[Text]
+           ,[AuthorName]
+           ,[AuthorThumbnails]
+           ,[AuthorChannelId]
+           ,[PublishedTime]
+           ,[LikeCount]
+           ,[AuthorIsChannelOwner]
+           ,[VideoId]
+           ,[Extra]
+           ,[ReplyCount])
+     VALUES
+           (N'{comment.Id.Sqlize()}'
+           ,N'{comment.Text.Sqlize()}'
+           ,N'{comment.AuthorName.Sqlize()}'
+           ,N'{comment.AuthorThumbnails.JoinWith().Sqlize()}'
+           ,N'{comment.AuthorChannelId.Sqlize()}'
+           ,N'{comment.PublishedTime.Sqlize()}'
+           ,N'{comment.LikeCount.Sqlize()}'
+           ,N'{comment.AuthorIsChannelOwner.Sqlize()}'
+           ,N'{comment.VideoId.Sqlize()}'
+           ,N'{comment.Extra.Sqlize()}'
+           ,N'{comment.ReplyCount.Sqlize()}');
+else 
+UPDATE [dbo].[Comments]
+   SET  
+       [Text] = N'{comment.Text.Sqlize()}'
+      ,[AuthorName] = N'{comment.AuthorName.Sqlize()}'
+      ,[AuthorThumbnails] = N'{comment.AuthorThumbnails.JoinWith().Sqlize()}'
+      ,[AuthorChannelId] = N'{comment.AuthorChannelId.Sqlize()}'
+      ,[PublishedTime] = N'{comment.PublishedTime.Sqlize()}'
+      ,[LikeCount] = N'{comment.LikeCount.Sqlize()}'
+      ,[AuthorIsChannelOwner] = N'{comment.AuthorIsChannelOwner.Sqlize()}'
+      ,[ReplyCount] = N'{comment.ReplyCount.Sqlize()}'
+      ,[VideoId] = N'{comment.VideoId.Sqlize()}'
+      ,[Extra] = N'{comment.Extra.Sqlize()}'
+ WHERE Id=N'{comment.Id.Sqlize()}';
+
+
+";
         }
     }
 }
