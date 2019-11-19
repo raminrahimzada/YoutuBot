@@ -10,12 +10,12 @@ namespace YoutuBot
 {
     class Bot
     {
-        public static IYoutubeService Service => C.Service;
-        static readonly ConcurrentBag<string> _cache=new ConcurrentBag<string>();
-        public static object sync=new object();
-        public static BlockingCollection<KeyValuePair<string, string>> _queue = new BlockingCollection<KeyValuePair<string, string>>();
+        public  IYoutubeService Service => C.Service;
+         readonly ConcurrentBag<string> _cache=new ConcurrentBag<string>();
+        public  object sync=new object();
+        public  BlockingCollection<KeyValuePair<string, string>> _queue = new BlockingCollection<KeyValuePair<string, string>>();
 
-        public static void WorkerThread()
+        public  void WorkerThread()
         {
             foreach (var kv in _queue.GetConsumingEnumerable())
             {
@@ -24,7 +24,7 @@ namespace YoutuBot
                 Browse(channelId);
             }
         }
-        public static void Browse(string channelId)
+        public  void Browse(string channelId)
         {
             //lock (sync)
             {
@@ -50,56 +50,72 @@ namespace YoutuBot
             }
         }
 
-        public static object syncException = new object();
+        private readonly object _syncException = new object();
+        private static int _newlyFoundVideosCount = 0;
 
-        public static void ExtendVideo(string videoId)
+        private void ExtendVideo(string videoId,bool useCache,int level)
         {
+            Interlocked.Decrement(ref _newlyFoundVideosCount);
+            if (level >= 5) return;
             try
             {
-                if (_videoCache.Contains(videoId)) return;
-                C.WriteLine("working.videoId:" + videoId);
+                if (useCache)
+                {
+                    if (_videoCache.Contains(videoId)) return;
+                }
+                C.WriteLine("working.videoId[{0}]:{1}", level, videoId);
                 var video = Service.GetVideo(videoId);
                 if (video == null)
                 {
                     _videoCache.Add(videoId);
                     return;
                 }
-                if (_videoCache.Contains(videoId)) return;
+                if (useCache)
+                {
+                    if (_videoCache.Contains(videoId)) return;
+                }
                 SqlStorage.Save(video);
                 _videoCache.Add(videoId);
                 
                 if (video.NextVideos != null)
                 {
-                    C.WriteLine("working.Found :" + video.NextVideos?.Count);
+                    Interlocked.Add(ref _newlyFoundVideosCount, video.NextVideos?.Count ?? 0);
+                    C.WriteLine("--- working.Found :" + _newlyFoundVideosCount);
 
                     foreach (var nv in video.NextVideos)
                     {
                         if (_videoCache.Contains(nv.Id)) continue;
                         var nvId = nv.Id;
-                        ThreadPool.QueueUserWorkItem(x =>
-                        {
-                            ExtendVideo(nvId); 
-                        });
+                        var levelCopy = level+1;
+                        ThreadPool.QueueUserWorkItem(x => ExtendVideo(nvId, true, levelCopy));
                     }
                 }
             }
             catch (Exception e)
             {
-                lock (syncException)
+                lock (_syncException)
                 {
                     C.WriteLine("ERROR:" + videoId + " " + e.Message);
                     File.AppendAllLines("errors.txt", new[] {videoId});
                 }
             }
         }
-        private static ConcurrentBag<string> _videoCache=new ConcurrentBag<string>();
-        public static void ExtendAllVideos()
+
+        private readonly ConcurrentBag<string> _videoCache = new ConcurrentBag<string>();
+
+        public  void ExtendAllVideos()
         {
             C.WriteLine("loading videos from db..");
             var videoIds = Sql
                 .Execute<string>(
-                    "select top(4000) Id from Videos  order by NEWID() ")
+                    "select  Id from Videos  order by NEWID() ")
                 .ToList();
+            foreach (var videoId in videoIds)
+            {
+                _videoCache.Add(videoId);
+            }
+
+            videoIds = videoIds.Take(100).ToList();
 
             C.WriteLine("loaded. count:"+videoIds.Count);
 
@@ -108,13 +124,18 @@ namespace YoutuBot
             {
                 if(string.IsNullOrEmpty(videoId)) continue;
                 C.WriteLine("count:" + ++count +"/"+ videoIds.Count);
-                ExtendVideo(videoId);
+                ExtendVideo(videoId, false, 0);
             }
+            C.WriteLine("completed currently all videos ..");
         }
-        public static void AnalyzeChannelsOnDb()
+        public  void AnalyzeChannelsOnDb()
         {
             //var channelIdList = Sql.Execute<string>("select Id from Channels");
-            var channelIdList = Sql.Execute<string>("select DISTINCT(ChannelId) from Videos with (NOLOCK) where ChannelId not in (select DISTINCT(Id) from Channels)");
+            var channelIdList =
+                Sql.Execute<string>(
+                        "select ChannelId from Videos with (NOLOCK) where ChannelId not in (select DISTINCT(Id) from Channels)  ORDER BY NEWID()")
+                    .Distinct().ToArray();
+
             C.WriteLine("found channels " + channelIdList.Length);
             var videoIds = Sql.Execute<string>("select Id from Videos");
             foreach (var channelId in channelIdList)
@@ -153,7 +174,7 @@ namespace YoutuBot
 
             C.WriteLine("finished all channels");
         }
-        public static void BrowseOnlyChannels(IYoutubeService service)
+        public  void BrowseOnlyChannels(IYoutubeService service)
         {
             //var oldChannelsInDb = Sql.Execute<string>("select Id from Channels");
            
@@ -175,7 +196,7 @@ namespace YoutuBot
             }
         }
 
-        public static void BrowseAllVideosComments()
+        public  void BrowseAllVideosComments()
         {
             C.WriteLine("loading videos");
             var videoIds = Sql
@@ -202,10 +223,12 @@ namespace YoutuBot
                             {
                                 comment.VideoId = videoId;
                             }
+
                             if (comments.Any(c => string.IsNullOrEmpty(c.VideoId)))
                             {
                                 ;
                             }
+
                             SqlStorage.Save(comments);
                         }
                         catch (Exception e)
@@ -220,6 +243,10 @@ namespace YoutuBot
                             }
                         }
                     }
+                }
+                catch (System.Net.WebException e)
+                {
+                    if (e.Message != "The remote server returned an error: (413) Request Entity Too Large.") continue;
                 }
                 catch (Exception e)
                 {

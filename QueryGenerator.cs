@@ -8,6 +8,7 @@ namespace YoutuBot
         public static string GenerateTableSchema()
         {
             return @"
+
 CREATE TABLE [dbo].[Channels](
 	[Id] [varchar](24) NOT NULL,
 	[Name] [nvarchar](max) NULL,
@@ -24,7 +25,27 @@ CREATE TABLE [dbo].[Channels](
 	[Id] ASC
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
 
+CREATE TABLE [dbo].[Comments](
+	[Id] [varchar](100) NOT NULL,
+	[Text] [nvarchar](max) NULL,
+	[AuthorName] [nvarchar](max) NULL,
+	[AuthorThumbnails] [nvarchar](max) NULL,
+	[AuthorChannelId] [nvarchar](max) NULL,
+	[PublishedTime] [nvarchar](max) NULL,
+	[LikeCount] [nvarchar](max) NULL,
+	[AuthorIsChannelOwner] [nvarchar](max) NULL,
+	[ReplyCount] [nvarchar](max) NULL,
+	[VideoId] [varchar](11) NULL,
+	[Extra] [nvarchar](max) NULL,
+	[CreatedDate] [datetime] NULL,
+ CONSTRAINT [PK_Comments] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
 CREATE TABLE [dbo].[Videos](
 	[Id] [char](11) NOT NULL,
 	[Title] [nvarchar](max) NULL,
@@ -48,20 +69,26 @@ CREATE TABLE [dbo].[Videos](
 	[Duration] [nvarchar](max) NULL,
 	[Author] [nvarchar](max) NULL,
 	[PublishedTime] [nvarchar](max) NULL,
-	[Watermark] [nvarchar](max) NULL,
 	[IsLiveContent] [nvarchar](max) NULL,
 	[ChannelId] [char](24) NULL,
 	[Thumbnails] [nvarchar](max) NULL,
 	[RichThumbnail] [nvarchar](max) NULL,
 	[ChannelThumbnail] [nvarchar](max) NULL,
+	[CreatedDate] [datetime] NULL,
  CONSTRAINT [PK_Videos] PRIMARY KEY CLUSTERED 
 (
 	[Id] ASC
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
+ALTER TABLE [dbo].[Comments] ADD  CONSTRAINT [DF_Comments_CreatedDate]  DEFAULT (getutcdate()) FOR [CreatedDate]
+GO
+ALTER TABLE [dbo].[Videos] ADD  CONSTRAINT [DF_Videos_CreatedDate]  DEFAULT (getutcdate()) FOR [CreatedDate]
+GO
+
 ";
         }
+        
         public static string Generate(YoutubeChannelInfo channel)
         {
             var querySaveChannel = $@"

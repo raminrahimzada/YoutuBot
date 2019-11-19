@@ -69,7 +69,7 @@ namespace YoutuBot
             {
                 return null;
             }
-            var extractedJson = dataRegex.Match(pageSource).Result("$1");
+            var extractedJson = m.Result("$1");
             var obj = JObject.Parse(extractedJson);
             YoutubeVideoInfo video=new YoutubeVideoInfo();
             video.Id = videoId;
@@ -120,7 +120,10 @@ namespace YoutuBot
             
             if (video.Length == null || video.Length.Value == 0.0M)
             {
-                ;
+                if (video.IsLiveContent.ToLower() != "true")
+                {
+                    ;
+                }
             }
             if (string.IsNullOrEmpty(video.Keywords))
             {
@@ -145,9 +148,9 @@ namespace YoutuBot
             {
                 ytInitialData = ytInitialData.RemoveThisFirst("window[\"ytInitialData\"] =").RemoveThisLast(";");
                 var init = JObject.Parse(ytInitialData);
-                var contents = init["contents"]["twoColumnWatchNextResults"]["results"]["results"]["contents"];
+                var contents = init["contents"]?["twoColumnWatchNextResults"]?["results"]?["results"]?["contents"];
                 //var videoPrimaryInfoRenderer = contents[0]["videoPrimaryInfoRenderer"];
-                var videoSecondaryInfoRenderer = contents[1]["videoSecondaryInfoRenderer"];
+                var videoSecondaryInfoRenderer = contents?[1]?["videoSecondaryInfoRenderer"];
                 //var itemSectionRenderer = contents[2]["itemSectionRenderer"];
 
 
@@ -251,7 +254,7 @@ namespace YoutuBot
                     .Select(c => c["verticalChannelSectionRenderer"]["items"]).ToArray();
             if (secondaryContents != null)
             {
-                var friendChannels = secondaryContents[0].Select(c => c["miniChannelRenderer"]);
+                var friendChannels = secondaryContents?[0]?.Select(c => c["miniChannelRenderer"]) ?? new JToken[0];
                 channel.FriendChannels = new List<YoutubeChannelInfo>();
                 foreach (var friendChannel in friendChannels)
                 {
@@ -318,7 +321,7 @@ namespace YoutuBot
 
                         video.Id = channelVideoPlayerRenderer["videoId"] + string.Empty;
 
-                        video.Title = channelVideoPlayerRenderer["title"]["runs"].Select(c => c["text"])
+                        video.Title = channelVideoPlayerRenderer["title"]?["runs"]?.Select(c => c?["text"]+string.Empty)
                             .JoinWith("\n");
 
                         if (channelVideoPlayerRenderer["description"] != null)
@@ -438,11 +441,14 @@ namespace YoutuBot
                 if (contentsX == null)
                 {
                     ;
+                    continue;
                 }
                 var current = YoutubeHelpers.ParseCommentsResponse(contentsX);
                 if (current == null)
                 {
                     ;
+                    continue;
+
                 }
                 foreach (var info in current)
                 {

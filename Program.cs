@@ -46,8 +46,11 @@ namespace YoutuBot
         static async Task Main(string[] args)
         {
             C.Service = new YoutubeService();
-            new Thread(Bot.AnalyzeChannelsOnDb).Start();
-            new Thread(Bot.BrowseAllVideosComments).Start();
+            //new Thread(new Bot().AnalyzeChannelsOnDb).Start();
+            new Thread(new Bot().ExtendAllVideos).Start();
+            //new Thread(new Bot().AnalyzeChannelsOnDb).Start();
+            //new Thread(new Bot().BrowseAllVideosComments).Start();
+            //new Thread(new Bot().BrowseAllVideosComments).Start();
 
             while (true)
             {

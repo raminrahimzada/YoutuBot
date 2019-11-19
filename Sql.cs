@@ -5,12 +5,12 @@ using Dapper;
 
 namespace YoutuBot
 {
-    public class Sql
+    public static class Sql
     {
         private static SqlConnection _connection;
 
-        public static string  connectionString =
-            "Data Source=MATRIX\\SERVER17;Initial Catalog=Youtube;User Id=sa;Password=badimcandolmasi;Connect Timeout=50000;";
+        private static string  connectionString =
+            "Data Source=MATRIX\\SERVER17;Initial Catalog=Youtube;User Id=sa;Password=badimcandolmasi;Connect Timeout=100000;";
         
         private static void Ensure()
         {
@@ -22,16 +22,17 @@ namespace YoutuBot
 
         public static T[] Execute<T>(string query)
         {
-            lock (sync)
+            lock (Sync)
             {
                 Ensure();
                 return _connection.Query<T>(query).ToArray();
             }
         }
-        public static object sync=new object();
+
+        private static readonly object Sync=new object();
         public static void Execute(string query)
         {
-            lock (sync)
+            lock (Sync)
             {
                 Ensure();
                 using (var cmd = _connection.CreateCommand())

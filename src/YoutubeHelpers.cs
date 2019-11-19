@@ -6,6 +6,7 @@ using System.Net;
 using System.Net.Cache;
 using System.Text;
 using System.Threading;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using YoutuBot.Models;
 
@@ -23,7 +24,7 @@ namespace YoutuBot
             foreach (var content in contents)
             {
                 YoutubeVideoCommentInfo commentInfo = new YoutubeVideoCommentInfo();
-                commentInfo.Extra = content.ToString();
+                commentInfo.Extra = content.ToString(Formatting.None);
                 var c = content["commentThreadRenderer"]["comment"]["commentRenderer"];
                 commentInfo.Id= c["commentId"] + string.Empty;
                 commentInfo.Text= c["contentText"]["simpleText"] + string.Empty;
@@ -40,22 +41,21 @@ namespace YoutuBot
                     commentInfo.AuthorName= c["authorText"]?["simpleText"] + string.Empty;
                 commentInfo.AuthorThumbnails =
                     c["authorThumbnail"]?["thumbnails"].Select(cc => cc["url"] + string.Empty).ToArray();
-                commentInfo.AuthorChannelId = c["authorEndpoint"]["commandMetadata"]["webCommandMetadata"]["url"].ToString()
-                    .RemoveThisFirst("/channel/");
+                commentInfo.AuthorChannelId = c["authorEndpoint"]?["commandMetadata"]?["webCommandMetadata"]?["url"]
+                                                  ?.ToString()
+                                                  ?.RemoveThisFirst("/channel/") + string.Empty;
+
                 commentInfo.LikeCount = c["likeCount"] + string.Empty;
                 commentInfo.ReplyCount = c["publishedTimeText"]["replyCount"] + string.Empty;
                 commentInfo.AuthorIsChannelOwner = c["publishedTimeText"]["authorIsChannelOwner"] + string.Empty;
                 commentInfo.PublishedTime = c["publishedTimeText"]["runs"].Select(r => r["text"] + string.Empty)
                     .FirstOrDefault();
                 var replies = c["replies"];
-                if (replies != null)
+                var continuations = replies?["commentRepliesRenderer"]["continuations"].FirstOrDefault();
+                if (continuations != null)
                 {
-                    var continuations = replies["commentRepliesRenderer"]["continuations"].FirstOrDefault();
-                    if (continuations != null)
-                    {
-                        commentInfo.TokenContinuation = continuations["nextContinuationData"]["continuation"] + string.Empty;
-                        commentInfo.TokenClickTrackingParams = continuations["nextContinuationData"]["clickTrackingParams"] + string.Empty;
-                    }
+                    commentInfo.TokenContinuation = continuations["nextContinuationData"]["continuation"] + string.Empty;
+                    commentInfo.TokenClickTrackingParams = continuations["nextContinuationData"]["clickTrackingParams"] + string.Empty;
                 }
                 allRootComments.Add(commentInfo);
             }
@@ -130,6 +130,23 @@ namespace YoutuBot
             {
                 return GetYoutubeComments(videoId, continuation, itct, session_token, visitorInfo1Live, ysc);
             }
+            catch (WebException e)
+            {
+                if (e.Message != "The remote server returned an error: (413) Request Entity Too Large.")
+                {
+                    if (e.Message != "The remote server returned an error: (400) Bad Request.")
+                    {
+                        ;
+                    }
+                }
+                
+                i++;
+                if (i < maxRetry) goto start;
+                else
+                {
+                    throw;
+                }
+            }
             catch (Exception e)
             {
                 C.WriteLine("-------------------------------------------");
@@ -139,11 +156,13 @@ namespace YoutuBot
                 if (i < maxRetry) goto start;
                 else
                 {
-                    throw;
+                    //throw;
+                    return new JObject();
                 }
             }
         }
-        static JObject GetYoutubeComments(string videoId, string continuation, string itct, string session_token,
+
+        private static JObject GetYoutubeComments(string videoId, string continuation, string itct, string session_token,
             string visitorInfo1Live, string ysc)
         {
             Uri uri = new Uri("https://www.youtube.com");
@@ -197,6 +216,11 @@ namespace YoutuBot
                     var responseString = reader.ReadToEnd();
                     responseObj.Close();
                     responseObj.Dispose();
+                    if (string.IsNullOrEmpty(responseString))
+                    {
+                        C.WriteLine("responseString is empty");
+                        return new JObject();
+                    }
                     var response = JObject.Parse(responseString);
                     return response;
                 }
