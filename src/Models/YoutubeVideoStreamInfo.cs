@@ -4,8 +4,7 @@ namespace YoutuBot.Models
 {
     public class YoutubeVideoStreamInfo
     {
-        [Key] 
-        public string Id { get; set; }
+        [Key] public string Id { get; set; }
 
         public string ITag { get; set; }
 

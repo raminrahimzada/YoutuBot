@@ -7,21 +7,9 @@ namespace YoutuBot
     public static class C
     {
         public static IYoutubeService Service;
+        public static Dictionary<int, ConsoleColor> _colors = new Dictionary<int, ConsoleColor>();
+        private static readonly Random r = new Random();
         public static string Now => DateTime.Now.ToString("HH:mm:ss");
-        public static Dictionary<int,ConsoleColor> _colors=new Dictionary<int, ConsoleColor>();
-        static readonly Random r=new Random();
-
-        private static T RandomEnumValue<T>()
-        {
-            var v = Enum.GetValues(typeof(T));
-            return (T)v.GetValue(r.Next(v.Length));
-        }
-        
-        public static ConsoleColor Color(int id)
-        {
-            if (!_colors.ContainsKey(id))  _colors.Add(id, RandomEnumValue<ConsoleColor>());
-            return _colors[id];
-        }
 
         public static string Prefix
         {
@@ -33,7 +21,22 @@ namespace YoutuBot
             }
         }
 
-        static void W(string line)
+        private static T RandomEnumValue<T>()
+        {
+            var v = Enum.GetValues(typeof(T));
+            return (T) v.GetValue(r.Next(v.Length));
+        }
+        public static object sync=new object();
+        public static ConsoleColor Color(int id)
+        {
+            lock (sync)
+            {
+                if (!_colors.ContainsKey(id)) _colors.Add(id, RandomEnumValue<ConsoleColor>());
+                return _colors[id];
+            }
+        }
+
+        private static void W(string line)
         {
             var threadId = Thread.CurrentThread.ManagedThreadId;
             var temp = Console.ForegroundColor;
@@ -41,14 +44,15 @@ namespace YoutuBot
             Console.Write(Prefix + line);
             Console.ForegroundColor = temp;
         }
+
         public static void WriteLine(string line)
         {
-            W(line+Environment.NewLine);
+            W(line + Environment.NewLine);
         }
 
         public static void WriteLine(string format, params object[] args)
         {
-            W(string.Format(format, args)+Environment.NewLine);
+            W(string.Format(format, args) + Environment.NewLine);
         }
 
         public static void Write(string s)

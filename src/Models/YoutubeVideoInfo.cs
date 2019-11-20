@@ -4,11 +4,11 @@ namespace YoutuBot.Models
 {
     public class YoutubeVideoInfo
     {
-        public string Id { get; set; }
-
-        public string IsHD;
         public string CCLicense;
         public string IsCC;
+
+        public string IsHD;
+        public string Id { get; set; }
         public string CommentsCount { get; set; }
         public string ViewsCount { get; set; }
         public string Rating { get; set; }

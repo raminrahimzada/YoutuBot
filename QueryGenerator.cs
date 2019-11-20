@@ -88,7 +88,7 @@ GO
 
 ";
         }
-        
+
         public static string Generate(YoutubeChannelInfo channel)
         {
             var querySaveChannel = $@"
@@ -129,16 +129,14 @@ UPDATE [dbo].[Channels]
       ,[FromChannelId] =ISNULL(FromChannelId,'')+',{channel.FromChannelId.Sqlize()}'
  WHERE [Id] = '{channel.Id}';
 ";
-            var sb=new StringBuilder();
+            var sb = new StringBuilder();
             sb.AppendLine(querySaveChannel);
             if (channel.Uploads != null)
-            {
                 foreach (var videoInfo in channel.Uploads)
                 {
-                    var query = QueryGenerator.Generate(videoInfo);
+                    var query = Generate(videoInfo);
                     sb.AppendLine(query);
                 }
-            }
 
             return sb.ToString();
         }
@@ -242,10 +240,7 @@ UPDATE [dbo].[Videos]
 
         public static string Generate(YoutubeVideoCommentInfo comment)
         {
-            if (string.IsNullOrEmpty(comment.VideoId))
-            {
-                ;
-            }
+            if (string.IsNullOrEmpty(comment.VideoId)) ;
             return $@"
 
 if(not exists(select top(1) 1 from [dbo].[Comments] where Id=N'{comment.Id.Sqlize()}'))

@@ -9,8 +9,9 @@ namespace YoutuBot
         YoutubePlayListInfo GetPlayList(string playlistId, int maxItemsCount = 0);
         IEnumerable<YoutubePlayListInfo> GetUserPlayLists(string userId);
         YoutubeVideoInfo GetVideo(string videoId);
+
         /// <summary>
-        /// Comments are fetching 20 by 20 so each enumeration causes new request and takes time
+        ///     Comments are fetching 20 by 20 so each enumeration causes new request and takes time
         /// </summary>
         /// <param name="videoId"></param>
         /// <returns></returns>
